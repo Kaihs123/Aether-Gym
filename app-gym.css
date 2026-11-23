@@ -413,3 +413,10 @@
 .crow small{opacity:.75}
 .cday{display:grid;gap:6px}
 .cdate{opacity:.65;font-weight:700}
+.stbar{height:10px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:8px}
+.stbar i{display:block;height:100%;background:var(--accent,#7c9cff);border-radius:99px}
+.stepcard{margin:12px 0}
+.dsum{display:grid;gap:10px}
+.dchips{display:flex;flex-wrap:wrap;gap:6px}
+.dchips span{padding:5px 11px;border-radius:99px;background:rgba(255,255,255,.08);font-size:13px;font-weight:600}
+.dsec h4{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.6}
