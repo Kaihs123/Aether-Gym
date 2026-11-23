@@ -673,9 +673,10 @@ function daySummary(d){
   if(st)h+='<div class="dsec"><h4>Steps</h4><div class="line"><div class="h"><span>'+nfmt(st)+' steps</span><b>'+Math.min(999,Math.round(st/STEPGOAL*100))+'% of goal</b></div></div></div>';
   return h+'</div>';
 }
+const cardDate=()=>{const t=todayS();return S.cd&&S.cd<=t?S.cd:t};
 function stepsCard(){
-  const t=todayS(),d=S.sd&&S.sd<=t?S.sd:t,n=stepsOf(d),pct=Math.min(100,Math.round(n/STEPGOAL*100));
-  return '<div class="addcard stepcard"><div class="datebar"><button type="button" data-sdate="-1" aria-label="Previous day">‹</button><div><b>Steps · '+(d===t?"Today":dShort(d))+'</b><small>Goal '+nfmt(STEPGOAL)+'</small></div><button type="button" data-sdate="1" aria-label="Next day"'+(d>=t?" disabled":"")+'>›</button></div>'+
+  const t=todayS(),d=cardDate(),n=stepsOf(d),pct=Math.min(100,Math.round(n/STEPGOAL*100));
+  return '<div class="addcard stepcard"><b>Steps · '+(d===t?"Today":dShort(d))+'</b><small class="note" style="display:block">Goal '+nfmt(STEPGOAL)+'</small>'+
     '<div class="stbar" aria-hidden="true"><i style="width:'+pct+'%"></i></div><p class="note" style="margin:6px 0 10px"><b>'+nfmt(n)+'</b> of '+nfmt(STEPGOAL)+' steps'+(n>=STEPGOAL?" · goal met":"")+'</p>'+
     '<div class="erow"><label for="stin">Total steps for the day</label><div class="step"><button type="button" data-stadd="-1000" aria-label="1000 fewer steps">−</button><input type="number" id="stin" data-stin inputmode="numeric" min="0" step="1" value="'+(n||"")+'" placeholder="Type or copy from your phone"><button type="button" data-stadd="1000" aria-label="1000 more steps">+</button></div></div>'+
     '<div class="btns"><button type="button" class="btn primary" data-stsave="'+d+'">Save steps</button><button type="button" class="btn" data-stgoal>Change goal</button></div>'+
@@ -753,9 +754,10 @@ function viewCardio(){
   const t=todayS();
   if(!S.cm||!MACH.some(m=>m[0]===S.cm))S.cm="tread";
   if(!S.cf||S.cfm!==S.cm){S.cf=cardioPrefill(S.cm);S.cfm=S.cm}
-  const m=machOf(S.cm),wk=cardioWeek(),today=CARDIO[t]||[];
+  const cdt=cardDate(),isT=cdt===t,m=machOf(S.cm),wk=cardioWeek(),today=CARDIO[cdt]||[];
   let h=head("Cardio","Log cardio")+'<p class="note intro">Pick your machine, set the numbers, then tap Add cardio.</p>';
   h+='<div class="cwk"><div><b>'+wk.mins+'</b><small>min this week</small></div><div><b>'+wk.days+'</b><small>'+(wk.days===1?"day":"days")+'</small></div><div><b>'+wk.dist+'</b><small>'+distU()+' (distance machines)</small></div></div>';
+  h+='<div class="datebar"><button type="button" data-sdate="-1" aria-label="Previous day">‹</button><div><b>'+(isT?"Today":dShort(cdt))+'</b><small>'+(isT?dShort(cdt):agoLong(cdt)+" · adding to this day")+'</small></div><button type="button" data-sdate="1" aria-label="Next day"'+(isT?" disabled":"")+'>›</button></div>';
   h+=stepsCard();
   h+='<h3>Machine</h3><div class="cmach" role="group" aria-label="Cardio machine">'+MACH.map(x=>'<button type="button" data-cmach="'+x[0]+'" aria-pressed="'+(x[0]===S.cm)+'">'+x[1]+'</button>').join("")+'</div>';
   h+='<div class="addcard cform"><b class="ctitle">'+m[1]+'</b><small class="note">'+m[3]+'</small>';
@@ -765,12 +767,12 @@ function viewCardio(){
       '<input type="number" id="cf-'+k+'" data-cf="'+k+'" inputmode="decimal" step="any" min="0" value="'+esc(S.cf[k]||"")+'" placeholder="'+(k==="min"?"":"optional")+'"><button type="button" data-cstep="'+k+'|1" aria-label="More '+f[0].toLowerCase()+'">+</button></div></div>';
   });
   const l=cardioLast(S.cm);
-  h+='<div class="btns"><button type="button" class="btn primary" data-cadd>Add cardio</button></div>'+(l?'<small class="note">Numbers start from your last '+m[1].toLowerCase()+' session. Change what is different.</small>':"")+
+  h+='<div class="btns"><button type="button" class="btn primary" data-cadd>Add cardio'+(isT?"":" to "+dShort(cdt))+'</button></div>'+(l?'<small class="note">Numbers start from your last '+m[1].toLowerCase()+' session. Change what is different.</small>':"")+
     '<p class="msg'+(S.msgErr?" err":"")+'" role="status">'+(S.msgFor==="__cardio"?esc(S.msg):"")+'</p></div>';
-  const ds=daySummary(t);if(ds)h+='<h3>Today so far</h3>'+ds;
-  h+='<h3>Cardio today</h3>';
-  h+=today.length?'<div class="clist">'+today.map(b=>'<div class="crow"><span><b>'+machOf(b.m)[1]+'</b><small>'+fmtCardio(b)+'</small></span><button type="button" class="btn sm" data-cdel="'+t+'|'+b.id+'" aria-label="Delete this cardio entry">Delete</button></div>').join("")+'</div>':'<p class="note">Nothing logged today yet.</p>';
-  const past=Object.keys(CARDIO).filter(d=>d<t).sort().reverse().slice(0,10);
+  const ds=daySummary(cdt);if(ds)h+='<h3>'+(isT?"Today so far":dShort(cdt))+'</h3>'+ds;
+  h+='<h3>'+(isT?"Cardio today":"Cardio on "+dShort(cdt))+'</h3>';
+  h+=today.length?'<div class="clist">'+today.map(b=>'<div class="crow"><span><b>'+machOf(b.m)[1]+'</b><small>'+fmtCardio(b)+'</small></span><button type="button" class="btn sm" data-cdel="'+cdt+'|'+b.id+'" aria-label="Delete this cardio entry">Delete</button></div>').join("")+'</div>':'<p class="note">Nothing logged '+(isT?"today":"on this day")+' yet.</p>';
+  const past=Object.keys(CARDIO).filter(d=>d<t&&d!==cdt).sort().reverse().slice(0,10);
   if(past.length)h+='<h3>Recent</h3><div class="clist">'+past.map(d=>'<div class="cday"><small class="cdate">'+dShort(d)+'</small>'+CARDIO[d].map(b=>'<div class="crow"><span><b>'+machOf(b.m)[1]+'</b><small>'+fmtCardio(b)+'</small></span><button type="button" class="btn sm" data-cdel="'+d+'|'+b.id+'" aria-label="Delete this cardio entry">Delete</button></div>').join("")+'</div>').join("")+'</div>';
   return h;
 }
@@ -1385,6 +1387,7 @@ function viewCal(){
     '<div class="stats">'+stat("This month",inMonth+(inMonth===1?" day":" days"))+stat("Last 4 weeks",(w4/4).toFixed(1)+" / week")+stat("Longest streak",best+(best===1?" day":" days"))+stat("All time",I.dates.length+(I.dates.length===1?" day":" days"))+'</div>'+
     '<div class="datebar"><button type="button" data-cal="-1" aria-label="Previous month">‹</button><div><b>'+MOL[mo]+' '+y+'</b></div><button type="button" data-cal="1" aria-label="Next month"'+(prefix.slice(0,7)>=lim?" disabled":"")+'>›</button></div>'+
     '<div class="cal">'+cells+'</div><div class="legend"><span>Trained</span><span class="p">Planned</span><span class="t">Today</span></div>'+detail+panel+
+    (sel<=t?'<button type="button" class="btn" data-cardday="'+sel+'" style="width:100%;margin-top:14px">Add swimming, cardio or steps to this day</button>':"")+
     (sel<=t?'<button type="button" class="btn primary" data-logday style="width:100%;margin-top:14px">'+(bd?"Open this day in Train":"Log a session for this day")+'</button>':"");
 }
 
@@ -1915,7 +1918,8 @@ sheet.addEventListener("click",e=>{
       renderAll();
     })();return;
   }
-  if(t.hasAttribute("data-sdate")){const d=S.sd||todayS(),n=addDays(d,parseInt(a("data-sdate"),10));S.sd=n>todayS()?todayS():n;renderAll();return}
+  if(t.hasAttribute("data-cardday")){S.cd=a("data-cardday");S.page="cardio";S.msg="";renderAll();focusSheet();return}
+  if(t.hasAttribute("data-sdate")){const d=cardDate(),n=addDays(d,parseInt(a("data-sdate"),10));S.cd=n>todayS()?todayS():n;S.msg="";renderAll();return}
   if(t.hasAttribute("data-stadd")){const el=sheet.querySelector("[data-stin]");if(!el)return;el.value=Math.max(0,(parseInt(el.value,10)||0)+parseInt(a("data-stadd"),10));return}
   if(t.hasAttribute("data-stsave")){
     const d=a("data-stsave"),el=sheet.querySelector("[data-stin]"),n=Math.round(parseFloat(el&&el.value));
@@ -1940,7 +1944,7 @@ sheet.addEventListener("click",e=>{
     const m=machOf(S.cm),o={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),m:m[0],t:Date.now()};
     m[2].forEach(k=>{const el=sheet.querySelector('[data-cf="'+k+'"]'),v=el?parseFloat(el.value):NaN;if(isFinite(v)&&v>=0)o[k]=v});
     if(!(o.min>0)){say("__cardio","Enter how many minutes you did.",true);renderAll();return}
-    const d=todayS();
+    const d=cardDate();
     CARDIO[d]=(CARDIO[d]||[]).concat(cleanCardio([o]));
     touch("cardio",d);S.cf=null;say("__cardio","Added "+m[1].toLowerCase()+".",false);renderAll();return;
   }
