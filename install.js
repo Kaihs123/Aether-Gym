@@ -41,7 +41,7 @@ function hide(){if(el){el.remove();el=null}}
 function dismiss(){set(KEY,String(Date.now()));hide()}
 function show(){
   if(el||standalone()||muted()||!can())return;
-  if(document.documentElement.classList.contains("auth-open")||sheet){setTimeout(show,2500);return}
+  if(document.documentElement.classList.contains("auth-open")||sheet||document.querySelector(".gh-ov")){setTimeout(show,2500);return}
   el=document.createElement("div");el.className="inst-bar";el.setAttribute("role","region");el.setAttribute("aria-label","Install the app");
   el.innerHTML='<span class="ic" aria-hidden="true"></span><span class="tx"><b>Put AETHER Gym on your home screen</b><small>'+(prompt?"One tap to install. Opens full screen like an app.":"Opens full screen like an app. Takes two taps.")+'</small></span><button type="button" class="go">'+(prompt?"Install":"Show me")+'</button><button type="button" class="x" aria-label="Not now">&times;</button>';
   document.body.appendChild(el);
@@ -53,7 +53,7 @@ window.addEventListener("appinstalled",function(){prompt=null;hide();closeSheet(
 /* the first time someone signs in on an Apple device, show the steps straight away (once per device) */
 function firstRun(){
   if(standalone()||!(ios||macSafari)||get(SEEN))return;
-  if(document.documentElement.classList.contains("auth-open")){setTimeout(firstRun,1500);return}
+  if(document.documentElement.classList.contains("auth-open")||document.querySelector(".gh-ov")||(!get("aether-gym-tour-v1")&&(firstRun.w=(firstRun.w||0)+1)<12)){setTimeout(firstRun,1500);return}
   set(SEEN,"1");set(KEY,String(Date.now()));hide();openSheet();
 }
 window.AETHER_INSTALL={can:can,open:install,firstRun:firstRun};

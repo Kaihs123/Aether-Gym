@@ -299,7 +299,7 @@ async function connect(){
   }else{
     B.mode="local";B.assets=null;loadLocal();
   }
-  ver++;setStatus();renderAll();run();
+  ver++;setStatus();renderAll();run();scheduleTour();
 }
 
 /* ---------- derived numbers ---------- */
@@ -778,7 +778,7 @@ function trendChart(points,label){
 
 /* ---------- views ---------- */
 const stat=(l,v,c,sm)=>'<div class="stat'+(c?" "+c:"")+'"><span>'+l+'</span><strong>'+v+'</strong>'+(sm?'<small>'+sm+'</small>':"")+'</div>';
-const head=(eyebrow,title,cls)=>{const nv=NAVS.find(n=>n[0]===S.page)||NAVS[1];return '<div class="sheet-head"><i class="tile"><svg viewBox="0 0 24 24" aria-hidden="true">'+nv[2]+'</svg></i><div><div class="eyebrow">'+eyebrow+'</div><h2'+(cls?' class="'+cls+'"':'')+'>'+title+'</h2></div></div>'};
+const head=(eyebrow,title,cls)=>{const nv=NAVS.find(n=>n[0]===S.page)||NAVS[1];return '<div class="sheet-head"><i class="tile"><svg viewBox="0 0 24 24" aria-hidden="true">'+nv[2]+'</svg></i><div><div class="eyebrow">'+eyebrow+'</div><h2'+(cls?' class="'+cls+'"':'')+'>'+title+'</h2></div>'+IBTN("here")+'</div>'};
 const seg=(group,tabs,cur)=>'<div class="seg" role="tablist">'+tabs.map(t=>'<button type="button" role="tab" data-group="'+group+'" data-tab="'+t[0]+'" aria-selected="'+(cur===t[0])+'">'+t[1]+'</button>').join("")+'</div>';
 const CHEV='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 
@@ -825,13 +825,15 @@ function groupsBlock(){
 }
 function welcome(){
   if(Object.keys(SESS).length||LS.get("aether-gym-welcome")==="1")return "";
-  const st=[["Open Train and pick a body part","Train suggests what is furthest behind this week. Or choose any body part yourself."],
-    ["Choose your exercises","Tick what you plan to do, then press Start session."],
-    ["Log each set","Enter the weight and reps. A rest timer starts on its own between sets."],
+  const st=[["Open Train and pick a body part","Tap the recommended one, or any body part."],
+    ["Choose your exercises","Tap each exercise you plan to do, then press Start session."],
+    ["Add weight, reps and sets","Open an exercise, set the weight and reps, then tap Log set. Tap it once for every set."],
     ["Plan ahead","Use Calendar to set which body parts you train on which days."]];
   return '<section class="welcome"><div class="wh"><b>Getting started</b><button type="button" class="wx" data-welcome="hide" aria-label="Hide the getting started guide">Got it</button></div><ol>'+
-    st.map((x,i)=>'<li><span class="n">'+(i+1)+'</span><span><b>'+x[0]+'</b><small>'+x[1]+'</small></span></li>').join("")+'</ol></section>';
+    st.map((x,i)=>'<li><span class="n">'+(i+1)+'</span><span><b>'+x[0]+'</b><small>'+x[1]+'</small></span></li>').join("")+'</ol>'+
+    '<div class="wtour"><button type="button" class="btn" data-tourstart>Take the quick tour</button><span>Tap <b>i</b> anywhere for help</span></div></section>';
 }
+
 function viewHome(){
   const I=idx(),nx=nextUp(),np=partOf(nx.key);
   const rows=PARTS.map(p=>{
@@ -875,7 +877,7 @@ function trainPicker(){
   const R=trainNeeds(),t=todayS(),todayParts=R.filter(x=>x.today);
   const rec=R.filter(x=>!x.today).slice().sort((a,b)=>b.score-a.score);
   const top=rec[0],second=rec[1];
-  let h=head("Train","What are you training?");
+  let h=head("Train","What are you training?")+'<p class="note intro">Pick the body part you want to work today. Next you will choose your exercises, then log your sets.</p>';
   if(todayParts.length)h+='<div class="tp-cont"><div><b>Today so far: '+todayParts.map(x=>x.p.label).join(" + ")+'</b><small>Pick up where you left off, or choose something else below.</small></div><button type="button" class="btn" data-trainpick="'+todayParts[0].p.key+'">Continue</button></div>';
   if(top){
     const why=x=>x.wk+' of '+x.g+' sets this week'+(x.behind?' · '+x.behind+' behind':'')+' · last trained '+agoLong(x.last);
@@ -907,7 +909,7 @@ function pickView(P,d,I,isToday){
   R.picks.forEach(pk=>{rec[pk.id]=1});
   const n=all.filter(x=>sel.indexOf(x.id)>=0||hasSetsOn(d,x.id)).length;
   const started=all.some(x=>hasSetsOn(d,x.id)),pd=prevDayFor(P.key,d,I);
-  let h='<div class="pickhead"><b>'+(S.manage?"Edit your exercise list":(isToday?"Choose today's exercises":"Choose exercises for "+dShort(d)))+'</b><small>'+(S.manage?"Hide anything your gym does not have. Show brings it back. Your history is never deleted.":"Tick what you plan to do. You can still add more once you are in the session.")+'</small></div>';
+  let h='<div class="pickhead"><b>'+(S.manage?"Edit your exercise list":(isToday?"Choose today's exercises":"Choose exercises for "+dShort(d)))+'</b><small>'+(S.manage?"Hide anything your gym does not have. Show brings it back. Your history is never deleted.":"Tap each exercise you plan to do so it gets a tick, then press Start session at the bottom. You can still add more later.")+'</small></div>';
   if(!S.manage)h+=coachCard(P,d,I);
   h+='<div class="chips pkchips">'+(S.manage?"":(pd?'<button type="button" data-pickset="prev">Same as '+(diff(d,pd)===1?"yesterday":dShort(pd))+'</button>':"")+'<button type="button" data-pickset="all">Select all</button><button type="button" data-pickset="clear">Clear</button>')+'<button type="button" data-pickset="manage" aria-pressed="'+S.manage+'">Edit list</button></div>';
   h+='<div class="pklist" role="group" aria-label="Exercises">';
@@ -948,7 +950,7 @@ function trainLog(P){
   const dps=dayParts(d,P.key);let tv=0,ts=0,tx=0;
   dps.forEach(k=>{const b=bd&&bd.parts[k];if(b){tv+=b.vol;ts+=b.sets;tx+=b.ex.length}});
   if(ts)h+='<div class="hero"><span>'+(dps.length>1?"Session":P.label)+' volume · '+(isToday?"today":dShort(d))+'</span><strong>'+vol(tv)+'</strong><small>'+ts+(ts===1?" set":" sets")+' across '+tx+(tx===1?" exercise":" exercises")+(dps.length>1?" · "+dps.filter(k=>bd.parts[k]).map(k=>partOf(k).label+" "+bd.parts[k].sets).join(", "):"")+'</small></div>';
-  else h+='<p class="note" style="margin:0 0 14px">Nothing logged for '+(dps.length>1?'this session':P.label.toLowerCase())+' on this day yet. Open an exercise to log your first set.</p>';
+  else h+=(Object.keys(SESS).length<3?'<div class="howto"><b>Log your first set</b><ol><li>Tap an exercise below to open it.</li><li>Set the weight and reps.</li><li>Tap <b>Log set</b>. Repeat for each set.</li></ol>'+IBTN("logging")+'</div>':'<p class="note" style="margin:0 0 14px">Nothing logged for '+(dps.length>1?'this session':P.label.toLowerCase())+' on this day yet. Open an exercise to log your first set.</p>');
   if(S.undo&&S.undo.d===d)h+='<div class="unpicked" role="status"><span>Removed <b>'+esc(S.undo.n)+'</b> from this session</span><button type="button" data-undopick>Undo</button></div>';
   if(dps.length>1){
     h+=dps.map(k=>{const Q=partOf(k),list=sessionEx(Q,d),b=bd&&bd.parts[k],n=b?b.sets:0;
@@ -1060,7 +1062,7 @@ function exCard(ex,d,I){
         '<span class="e">'+((bwz||ex.bw===2)?"—":fw(e1(s.w,s.r)))+(pbk?'<span class="pb">PB</span>':"")+'</span>'+btn+'</div>';
     });
     h+=balanceCard(ex,d,I);
-    h+='<label class="chk"><input type="checkbox" data-uni="'+ex.id+'"'+(uni?" checked":"")+'><span>Track left and right separately</span></label>';
+    h+=(sets.length<2?'<p class="exhint">'+(sets.length?'Rest, then tap <b>Log set '+(sets.length+1)+'</b> for your next set.':'Set the weight and reps for your first set, then tap <b>Log set 1</b>. Tap it again for each extra set.')+'</p>':'')+'<label class="chk"><input type="checkbox" data-uni="'+ex.id+'"'+(uni?" checked":"")+'><span>Track left and right separately<small>For one-arm or one-leg exercises</small></span></label>';
     const sg=suggest(ex,d),en=S.entry[ex.id]||{},wl=ex.bw===2?"Assistance":ex.bw?"Added weight":"Weight";
     let rows,extra="";
     if(uni){
@@ -1288,6 +1290,155 @@ function renderAll(soft){
   $("sheet").innerHTML=html;
   renderLb();
   setStatus();
+}
+
+/* ---------- help: first-time tour, "i" buttons and how-to sheets ---------- */
+const TOUR_KEY="aether-gym-tour-v1";
+const IBTN=t=>'<button type="button" class="ibtn" data-help="'+t+'" aria-label="How this works"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v5.4" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.25" fill="currentColor"/></svg></button>';
+function helpTopic(){
+  if(S.page==="train"){
+    if(!S.chosen)return "start";
+    if(S.tab==="history")return "history";
+    if(S.tab==="records")return "records";
+    const P=partOf(S.part),dd=S.dateAuto?todayS():S.date;
+    return isPicking(P,dd)?"exercises":"logging";
+  }
+  return {home:"overview",cal:"plan",photos:"photos",settings:"settings"}[S.page]||"menu";
+}
+const HELP={
+  start:{t:"Start a workout",s:[
+    ["Pick a body part","Tap the recommended one, or any body part card. Today's goal is just to choose what to train."],
+    ["Choose your exercises","Tap each exercise you plan to do. A tick means it is in your session. Then press Start session."],
+    ["Log each set","Open an exercise, set the weight and reps, then tap Log set. Do this once for every set."]],
+    tip:"A rep is one lift. A set is a group of reps done back to back before you rest. 10 bench presses in a row is one set of 10 reps."},
+  exercises:{t:"Choose your exercises",s:[
+    ["Tap to select","Tap an exercise to tick it. Tap again to untick. The button at the bottom counts what you have picked."],
+    ["Quick picks","Select all ticks everything and Clear unticks everything. If you have trained this body part before, a Same as button repeats that session."],
+    ["Start session","Press it when you are ready. You can still add more exercises once you are in the session."],
+    ["Machine not at your gym?","Tap Edit list to hide exercises you never use. Your history is never deleted."]],
+    tip:"Coach picks are suggestions that balance the parts of the muscle you have trained least."},
+  logging:{t:"Add weight, reps and sets",s:[
+    ["Open an exercise","Tap its name. The weight and reps boxes appear, filled in from last time."],
+    ["Set weight and reps","Use + and − to change them, or tap the number and type."],
+    ["Tap Log set","That saves one set. Rest, then tap Log set again for your next set. The button counts for you: Log set 2, Log set 3."],
+    ["Fix a mistake","Tap the pencil beside a logged set to change or delete it. Tap the × on an exercise you have not started to take it out of today."],
+    ["Mixed sides","For one-arm or one-leg exercises, switch on Track left and right separately."]],
+    tip:"A rest timer starts by itself after each set. Beat your best and you will see a PB badge."},
+  parts:{t:"Train more than one body part",s:[
+    ["Add a part","Under Also train today, tap + and a body part. You choose its exercises, then everything is in one list."],
+    ["Switch between parts","Tap a body part at the top to jump to its exercises."],
+    ["Take one off","Tap the × on a part you have not logged any sets for."]]},
+  history:{t:"History",s:[["Look back","See your earlier sessions for this body part, newest first."]]},
+  records:{t:"Records",s:[["Your bests","See your personal bests for each exercise in this body part."]]},
+  overview:{t:"Overview",s:[
+    ["This week","The top card counts sessions this week. The bars show sets for each body part against your weekly goal."],
+    ["Streak and PBs","Streak is days in a row trained. PBs are personal bests set in the last 30 days."],
+    ["Start training","Tap any body part, or open the Train tab."]]},
+  plan:{t:"Calendar and planning",s:[
+    ["See your history","Tap any day to see what you did, with sets and total weight lifted."],
+    ["Plan ahead","Pick today or a future day, then tap the body parts you plan to train. They show as Planned in Train."],
+    ["Change your mind","Tap a planned body part again to remove it."]]},
+  photos:{t:"Progress photos",s:[
+    ["Add a photo","Choose a date, add a note if you like, then tap Add progress photos."],
+    ["View and compare","Tap a photo to open it full size. Use the arrows to move between photos."],
+    ["Delete","Open a photo and choose delete. Photos are private to your account."]]},
+  settings:{t:"Settings",s:[
+    ["Weight unit","Switch between kg and lb for the weights you enter and see."],
+    ["Rest timer","How long the rest timer counts after each set."],
+    ["Weekly sets goal","How many sets you aim for per body part each week. This fills the bars on Overview."],
+    ["Training days","Body parts you train together, used when you plan ahead."],
+    ["Backup","Copy your workouts as text to keep a spare."]]},
+  install:{t:"Put it on your home screen",s:[["Install the app","It opens full screen like an app and loads faster."]],install:true}
+};
+const TOPIC_LIST=[["start","Start a workout"],["logging","Add weight, reps and sets"],["exercises","Choose your exercises"],["parts","Train more than one body part"],["plan","Calendar and planning"],["photos","Progress photos"],["settings","Settings"],["install","Put it on your home screen"]];
+const TOUR=[
+  {t:"Welcome to AETHER Gym",b:"Log your workouts, watch your lifts go up and plan your week. Here is how it works in under a minute.",m:"welcome"},
+  {t:"1. Pick a body part",b:"Open Train and tap what you want to work today. The recommended card shows the body part you are furthest behind on.",m:"pick"},
+  {t:"2. Choose your exercises",b:"Tap each exercise you plan to do so it gets a tick, then press Start session. You can add more later.",m:"choose"},
+  {t:"3. Add weight, reps and sets",b:"Open an exercise, set the weight and the reps, then tap Log set. A set is a group of reps. Tap Log set once per set.",m:"log"},
+  {t:"Need a reminder?",b:"Tap the i button at the top, or beside any heading, to see how that screen works. Your workouts save to your account automatically.",m:"help"}
+];
+const MOCK={
+  welcome:'<div class="gm gm-w"><span class="gm-b">Pick</span><span class="gm-a">›</span><span class="gm-b">Choose</span><span class="gm-a">›</span><span class="gm-b">Log</span></div>',
+  pick:'<div class="gm"><div class="gm-rec"><small>RECOMMENDED</small><b>Chest</b><span class="gm-btn">Train chest</span></div><div class="gm-card"><b>Back</b><i><u style="width:30%"></u></i></div></div>',
+  choose:'<div class="gm"><div class="gm-row on"><span class="gm-ck">✓</span><span><b>Barbell bench press</b><small>Mid chest</small></span></div><div class="gm-row on"><span class="gm-ck">✓</span><span><b>Incline dumbbell press</b><small>Upper chest</small></span></div><div class="gm-row"><span class="gm-ck"></span><span><b>Machine chest press</b><small>Mid chest</small></span></div><span class="gm-btn gm-full">Start session · 2 exercises</span></div>',
+  log:'<div class="gm"><div class="gm-st"><span>Weight (kg)</span><i>−</i><b>20</b><i>+</i></div><div class="gm-st"><span>Reps</span><i>−</i><b>10</b><i>+</i></div><span class="gm-btn gm-full">Log set 1</span><p class="gm-eq">20 kg × 10 reps = 1 set</p></div>',
+  help:'<div class="gm gm-h"><span class="gm-i">i</span><p>Tap <b>i</b> for help on any screen</p></div>'
+};
+let ov=null,ovKey=null,ovReturn=null;
+function closeOv(){if(ov){ov.remove();ov=null}document.removeEventListener("keydown",ovKey);ovKey=null;if(ovReturn&&ovReturn.focus){try{ovReturn.focus()}catch(e){}}ovReturn=null}
+function mkOv(label){
+  closeOv();ovReturn=document.activeElement;
+  ov=document.createElement("div");ov.className="gh-ov";ov.setAttribute("role","dialog");ov.setAttribute("aria-modal","true");ov.setAttribute("aria-label",label);
+  document.body.appendChild(ov);
+  ovKey=e=>{if(e.key==="Escape"){if(ov&&ov.classList.contains("gh-tour"))LS.set(TOUR_KEY,"1");closeOv()}};
+  document.addEventListener("keydown",ovKey);
+  return ov;
+}
+function openHelp(topic,fromMenu){
+  const t=HELP[topic];
+  const o=mkOv(t?t.t:"Help");
+  if(!t||topic==="menu"){
+    o.innerHTML='<div class="gh-card"><div class="gh-top"><b class="gh-h">Help</b><button type="button" class="gh-x" data-gh="close" aria-label="Close">×</button></div><p class="gh-p">What would you like to know?</p><div class="gh-list">'+
+      TOPIC_LIST.map(x=>'<button type="button" data-ghopen="'+x[0]+'"><span>'+x[1]+'</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>').join("")+
+      '<button type="button" data-gh="tour"><span>Replay the welcome tour</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>';
+  }else{
+    o.innerHTML='<div class="gh-card"><div class="gh-top">'+(fromMenu?'<button type="button" class="gh-back" data-gh="menu">‹ All help</button>':'<b class="gh-h">'+t.t+'</b>')+'<button type="button" class="gh-x" data-gh="close" aria-label="Close">×</button></div>'+(fromMenu?'<b class="gh-h">'+t.t+'</b>':'')+
+      '<ol class="gh-steps">'+t.s.map((x,i)=>'<li><span class="n">'+(i+1)+'</span><span><b>'+x[0]+'</b><small>'+x[1]+'</small></span></li>').join("")+'</ol>'+
+      (t.tip?'<p class="gh-tip"><b>Good to know</b>'+t.tip+'</p>':"")+
+      (t.install?'<button type="button" class="gh-go" data-gh="install">Show me how</button>':'')+
+      '<div class="gh-foot"><button type="button" class="gh-more" data-gh="menu">More help topics</button><button type="button" class="gh-go" data-gh="close">Got it</button></div></div>';
+  }
+  const f=o.querySelector(".gh-go,.gh-list button");if(f&&matchMedia("(pointer:fine)").matches)f.focus();
+}
+function openTour(i){
+  i=i||0;const st=TOUR[i],last=i===TOUR.length-1;
+  const o=ov&&ov.classList.contains("gh-tour")?ov:mkOv("Welcome tour");
+  o.className="gh-ov gh-tour";
+  o.innerHTML='<div class="gh-card"><div class="gh-top"><span class="gh-dots" aria-label="Step '+(i+1)+' of '+TOUR.length+'">'+TOUR.map((x,k)=>'<i'+(k===i?' class="on"':'')+'></i>').join("")+'</span><button type="button" class="gh-skip" data-gh="skip">'+(last?'':'Skip')+'</button></div>'+
+    '<div class="gh-mock">'+MOCK[st.m]+'</div><b class="gh-h">'+st.t+'</b><p class="gh-p">'+st.b+'</p>'+
+    '<div class="gh-foot">'+(i?'<button type="button" class="gh-more" data-gh="prev" data-i="'+(i-1)+'">Back</button>':'<span></span>')+
+    '<button type="button" class="gh-go" data-gh="'+(last?"done":"next")+'" data-i="'+(i+1)+'">'+(last?"Start training":"Next")+'</button></div></div>';
+  const g=o.querySelector(".gh-go");if(g&&matchMedia("(pointer:fine)").matches)g.focus({preventScroll:true});
+}
+function endTour(){LS.set(TOUR_KEY,"1");closeOv()}
+document.addEventListener("click",e=>{
+  const h=e.target.closest("[data-help]");
+  if(h){e.preventDefault();openHelp(h.getAttribute("data-help")==="here"?helpTopic():h.getAttribute("data-help"));return}
+  if(e.target.closest("[data-tourstart]")){e.preventDefault();openTour(0);return}
+  if(!ov)return;
+  if(e.target===ov){if(ov.classList.contains("gh-tour"))endTour();else closeOv();return}
+  const g=e.target.closest("[data-gh]"),op=e.target.closest("[data-ghopen]");
+  if(op){openHelp(op.getAttribute("data-ghopen"),true);return}
+  if(!g)return;
+  const a=g.getAttribute("data-gh");
+  if(a==="close")closeOv();
+  else if(a==="skip"||a==="done")endTour();
+  else if(a==="next"||a==="prev")openTour(+g.getAttribute("data-i"));
+  else if(a==="menu")openHelp("menu");
+  else if(a==="tour")openTour(0);
+  else if(a==="install"){closeOv();if(window.AETHER_INSTALL)AETHER_INSTALL.open()}
+});
+/* a help button in the top bar, beside search */
+(function(){
+  if(!window.AETHER_SOLO)return;
+  const bar=document.querySelector(".hub-top-r");if(!bar||bar.querySelector(".help-top"))return;
+  const b=document.createElement("button");b.type="button";b.className="hub-ibtn help-top";b.setAttribute("data-help","menu");b.setAttribute("aria-label","Help and how-to");b.title="Help";
+  b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v5.4" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.25" fill="currentColor"/></svg>';
+  const first=bar.querySelector(".hub-ibtn");bar.insertBefore(b,first||null);
+})();
+/* show the tour once, to people with no workouts yet, as soon as their data has loaded */
+function scheduleTour(){
+  if(LS.get(TOUR_KEY))return;
+  let n=0;
+  (function tick(){
+    if(LS.get(TOUR_KEY))return;
+    const ready=B.mode==="local"||(B.gotPlan&&B.gotSess);
+    if(!ready&&++n<40){setTimeout(tick,400);return}
+    if(Object.keys(SESS).length){LS.set(TOUR_KEY,"1");return}
+    if(document.documentElement.classList.contains("auth-open")||ov||document.querySelector(".inst-sheet")){if(++n<80)setTimeout(tick,600);return}
+    openTour(0);
+  })();
 }
 
 /* ---------- events ---------- */
