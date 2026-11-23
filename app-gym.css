@@ -454,3 +454,114 @@ html,body,button,a,label,summary,input,select,textarea,.tab{touch-action:manipul
 .mlink.sm{font-size:13px;margin:0 0 4px 74px}
 /* accounts with hidden progress: no 0-10 body part wheel */
 .app-gym.hp .stage-head,.app-gym.hp .stage{display:none!important}
+
+/* ===== Simplified Hevy-style shell: dark, bottom nav, single column ===== */
+.app-gym.app-gym[data-tint]{--bg:#000;--card:#1c1c1e;--sub:#242426;--ink:#fff;--ink-2:#e6e6ea;--muted:#9b9ba3;--faint:#6f6f77;--line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.16);--hover:rgba(255,255,255,.06);--tint:#0a84ff;--tint-ink:#4da3ff;--tint-soft:rgba(10,132,255,.16);--tint-fill:#0a84ff;--positive:#30d158;color-scheme:dark}
+body{background:#000}
+.app-gym .left{display:none!important}
+.app-gym .layout{grid-template-columns:minmax(0,1fr)!important;max-width:620px;margin-inline:auto;margin-top:8px}
+.app.app-gym .sheet.sheet{background:transparent!important;border:0!important;box-shadow:none!important;padding:4px 14px 150px!important}
+.app-gym .layout{padding:0}
+.app-gym .tabs{position:fixed!important;left:0;right:0;bottom:0;top:auto;z-index:90;display:flex;justify-content:space-around;gap:0;margin:0!important;padding:6px 12px calc(env(safe-area-inset-bottom,0px) + 6px)!important;overflow:visible;background:#0b0b0c;border-top:1px solid var(--line);border-bottom:0}
+.app-gym .tabs .tab{flex:1;max-width:160px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0 5px;border:0;border-radius:14px;background:transparent;color:var(--muted);font:600 12px/1 var(--body)}
+.app-gym .tabs .tab .ico{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-gym .tabs .tab[aria-current="page"]{color:var(--tint-ink);background:rgba(10,132,255,.14)}
+.app-gym[data-logging="1"] .tabs{display:none}
+.app-gym .ptitle h1{margin:6px 0 16px;font:700 30px/1.1 var(--display);letter-spacing:-.02em}
+.app-gym .sheet-head{display:none}
+.app-gym .backbar{display:flex;align-items:center;gap:2px;margin:2px 0 6px -6px;padding:6px 8px;border:0;background:transparent;color:var(--tint-ink);font:600 16px var(--body)}
+.app-gym .backbar svg{width:22px;height:22px}
+.app-gym .startbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;border:0;border-radius:14px;background:var(--card);color:var(--ink);font:650 18px var(--body)}
+.app-gym .startbtn svg{width:22px;height:22px}
+.app-gym .startbtn.resume{flex-direction:column;gap:2px;background:var(--tint-fill);color:#fff;font-size:17px}
+.app-gym .startbtn.resume small{font:500 13px var(--body);opacity:.9}
+.app-gym .rcard,.app-gym .wcard,.app-gym .wkcard{margin:0 0 12px;padding:14px 16px;border-radius:14px;background:var(--card);border:0}
+.app-gym .rcard .rh b{font:650 17px var(--display)}
+.app-gym .rcard .rs{margin:6px 0 10px;color:var(--muted);font-size:14px;line-height:1.45}
+.app-gym .rcard .btn{width:100%}
+.app-gym .rimgs{display:flex;gap:6px;margin:0 0 12px;overflow:hidden}
+.app-gym .rimgs img{width:44px;height:44px;border-radius:10px;object-fit:cover;background:#fff}
+.app-gym .wch{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.app-gym .wch b{font:650 16px var(--display)}
+.app-gym .wch small{color:var(--muted);font-size:13px}
+.app-gym .wkcard{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.app-gym .wkcard small{display:block;color:var(--muted);font-size:13px}
+.app-gym .wkcard b{font:700 22px var(--display)}
+.app-gym .wkrow{display:flex;gap:6px;align-items:flex-end}
+.app-gym .wkrow span{display:flex;flex-direction:column;align-items:center;gap:4px;width:18px}
+.app-gym .wkrow i{display:block;width:100%;height:18px;border-radius:5px;background:var(--line-2)}
+.app-gym .wkrow .on i{background:var(--tint)}
+.app-gym .wkrow .plan i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--tint)}
+.app-gym .wkrow b{font:500 11px/1 var(--body);color:var(--faint)}
+.app-gym .wkrow .today b{color:var(--ink);font-weight:700}
+.app-gym .prow{display:flex;align-items:center;gap:16px;margin:4px 0 16px}
+.app-gym .avatar{flex:none;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:#0e9ab0;color:#fff;font:600 40px var(--display)}
+.app-gym .pnm b{display:block;font:700 22px var(--display);margin-bottom:6px}
+.app-gym .pst{display:flex;gap:18px}
+.app-gym .pst span{display:flex;flex-direction:column;font:650 18px var(--display)}
+.app-gym .pst small{font:500 12px var(--body);color:var(--muted)}
+.app-gym .pchart{margin:0 0 16px;padding:14px 16px;border-radius:14px;background:var(--card)}
+.app-gym .pchart small{color:var(--muted);font-size:12.5px}
+.app-gym .wbars{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;height:92px;margin-top:10px}
+.app-gym .wbars span{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
+.app-gym .wbars i{width:100%;max-width:26px;border-radius:5px;background:var(--tint)}
+.app-gym .wbars b{font:500 11px var(--body);color:var(--muted)}
+.app-gym .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.app-gym .dtile{display:flex;align-items:center;min-height:56px;padding:0 16px;border:0;border-radius:14px;background:var(--card);color:var(--ink);font:600 16px var(--body);text-align:left}
+.app-gym .dtile.wide{width:100%}
+/* log workout */
+.app-gym .logbar{display:flex;align-items:center;gap:8px;margin:0 -14px;padding:6px 12px 10px;border-bottom:1px solid var(--line)}
+.app-gym .logbar b{flex:1;font:650 20px var(--display)}
+.app-gym .lb-min{width:40px;height:40px;display:grid;place-items:center;border:0;background:transparent;color:var(--ink);padding:0}
+.app-gym .lb-min svg{width:28px;height:28px}
+.app-gym .lb-fin{height:42px;padding:0 20px;border:0;border-radius:11px;background:var(--tint-fill);color:#fff;font:650 17px var(--body)}
+.app-gym .lstats{display:flex;gap:28px;margin:0 -14px 6px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.app-gym .lstats span{display:block;color:var(--muted);font-size:13px}
+.app-gym .lstats b{display:block;margin-top:2px;font:600 20px var(--display)}
+.app-gym .lstats div:first-child b{color:var(--tint-ink)}
+.app-gym .xc{margin:18px 0 6px}
+.app-gym .xh{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.app-gym .xi{flex:none;width:46px;height:46px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#fff;color:#111;font:700 18px var(--display)}
+.app-gym .xi img{width:100%;height:100%;object-fit:cover}
+.app-gym .xh b{flex:1;color:var(--tint-ink);font:650 18px/1.25 var(--display)}
+.app-gym .xm{width:38px;height:38px;display:grid;place-items:center;border:0;background:transparent;color:var(--ink);padding:0}
+.app-gym .xm svg{width:22px;height:22px;fill:currentColor}
+.app-gym .sg{display:grid;grid-template-columns:44px minmax(0,1fr) 74px 74px 48px;gap:8px;align-items:center;margin-bottom:8px}
+.app-gym .sgh{margin-bottom:6px;color:var(--muted);font:600 12px var(--body);letter-spacing:.04em;text-align:center}
+.app-gym .sgr .n{display:grid;place-items:center;height:44px;border-radius:10px;background:var(--card);font:650 16px var(--body)}
+.app-gym .sgr .pv{text-align:center;color:var(--muted);font-size:13px;line-height:1.2}
+.app-gym .sgr .v{display:grid;place-items:center;height:44px;font:600 17px var(--body);position:relative}
+.app-gym .sgr .in{width:100%;height:44px;padding:0 4px;border:1.5px solid var(--line-2);border-radius:10px;background:#000;color:var(--ink);text-align:center;font:600 17px var(--body)}
+.app-gym .sgr .in:focus{border-color:var(--tint);outline:0}
+.app-gym .sgr .ck{width:48px;height:44px;border:0;border-radius:10px;background:var(--card);color:var(--muted);font:700 20px var(--body);padding:0}
+.app-gym .sgr .ck.on{background:#1f8f4b;color:#fff}
+.app-gym .sgr.done{background:rgba(48,209,88,.12);border-radius:10px;margin-inline:-4px;padding:4px}
+.app-gym .sgr.done .n{background:transparent}
+.app-gym .sgr .pb{position:absolute;right:-2px;top:-2px;font:700 9px var(--body);padding:2px 4px;border-radius:5px;background:#ffd60a;color:#000;font-style:normal}
+.app-gym .xo{margin:6px 0 4px;padding:12px;border-radius:12px;background:var(--card)}
+.app-gym .addset{display:block;width:100%;height:46px;margin:14px 0 0;border:0;border-radius:11px;background:var(--card);color:var(--ink);font:650 16px var(--body)}
+.app-gym .addset.big{background:rgba(10,132,255,.18);color:var(--tint-ink)}
+.app-gym .cancelw{display:block;width:100%;height:46px;margin:12px 0 0;border:0;background:transparent;color:#ff453a;font:650 16px var(--body)}
+.app-gym .minibar{position:fixed;z-index:95;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 72px);max-width:600px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:999px;background:#2a2a2d;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+.app-gym .minibar button{flex:none;width:46px;height:46px;border:0;border-radius:50%;display:grid;place-items:center;padding:0;background:#3a3a3d;color:#fff}
+.app-gym .minibar .mb-x{color:#ff453a;background:#3a2523}
+.app-gym .minibar svg{width:24px;height:24px}
+.app-gym .mb-t{flex:1;min-width:0}
+.app-gym .mb-t b{display:flex;align-items:center;gap:8px;font:650 17px var(--body)}
+.app-gym .mb-t b i{width:10px;height:10px;border-radius:50%;background:#30d158}
+.app-gym .mb-t b em{font-style:normal}
+.app-gym .mb-t small{display:block;color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* add exercise library */
+.app-gym .libq{display:block;width:100%;height:44px;margin:12px 0 10px;padding:0 14px;border:0;border-radius:11px;background:var(--card);color:var(--ink);font:500 16px var(--body)}
+.app-gym .libchips{margin-bottom:6px}
+.app-gym .libp{margin:16px 0 6px}
+.app-gym .libx{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:8px 10px;border:0;border-radius:11px;background:transparent;color:var(--ink);text-align:left;font:600 16px var(--body)}
+.app-gym .libx .lbar{width:4px;height:30px;border-radius:2px;background:transparent}
+.app-gym .libx b{flex:1;font-weight:600}
+.app-gym .libx.on{background:rgba(10,132,255,.16)}
+.app-gym .libx.on .lbar{background:var(--tint)}
+.app-gym .libx i{font-style:normal;color:var(--tint-ink);font-weight:700}
+.app-gym .pickbar{position:fixed;left:0;right:0;bottom:0;z-index:92;padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 10px);background:#000;border-top:1px solid var(--line)}
+.app-gym .pickbar .btn{width:100%;max-width:600px;display:block;margin:0 auto}
+.app-gym.resting .minibar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)}
+body,html{background:#000!important}
