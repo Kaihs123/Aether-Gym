@@ -687,14 +687,18 @@ const AWD=[["mon","Monday"],["tue","Tuesday"],["wed","Wednesday"],["thu","Thursd
 const awdKey=d=>["sun","mon","tue","wed","thu","fri","sat"][parse(d).getDay()];
 function cleanAssign(raw){
   if(!raw||typeof raw!=="object")return null;
-  const o={note:String(raw.note||"").slice(0,400),steps:Math.max(0,Math.min(200000,Math.round(+raw.steps)||0)),days:{}};
+  const o={note:String(raw.note||"").slice(0,400),steps:Math.max(0,Math.min(200000,Math.round(+raw.steps)||0)),days:{},lib:[]};
+  (Array.isArray(raw.lib)?raw.lib:[]).slice(0,30).forEach(m=>{
+    if(m&&/^[a-z0-9-]{2,30}$/.test(String(m.id))&&/^machines\/[a-z0-9-]{2,30}\.jpg$/.test(String(m.img||"")))o.lib.push({id:m.id,n:String(m.n||"").slice(0,40),img:m.img,how:String(m.how||"").slice(0,300)});
+  });
   AWD.forEach(w=>{
     const d=raw.days&&raw.days[w[0]];if(!d)return;
     const parts=(Array.isArray(d.parts)?d.parts:[]).filter(validPart);
-    const c={parts:PARTS.map(x=>x.key).filter(k=>parts.indexOf(k)>=0),cardio:String(d.cardio||"").slice(0,200),note:String(d.note||"").slice(0,300)};
-    if(c.parts.length||c.cardio||c.note)o.days[w[0]]=c;
+    const c={parts:PARTS.map(x=>x.key).filter(k=>parts.indexOf(k)>=0),cardio:String(d.cardio||"").slice(0,200),note:String(d.note||"").slice(0,300),ex:[]};
+    (Array.isArray(d.ex)?d.ex:[]).slice(0,14).forEach(e=>{if(e&&o.lib.some(m=>m.id===e.id))c.ex.push({id:e.id,s:Math.max(0,Math.min(20,Math.round(+e.s)||0)),r:String(e.r||"").slice(0,12)})});
+    if(c.parts.length||c.cardio||c.note||c.ex.length)o.days[w[0]]=c;
   });
-  return Object.keys(o.days).length||o.note||o.steps?o:null;
+  return Object.keys(o.days).length||o.note||o.steps||o.lib.length?o:null;
 }
 async function loadAssign(){
   const sb=window.AETHER_SB;if(!sb||B.mode!=="cloud")return;
@@ -711,11 +715,17 @@ function assignCard(){
   const c=ASSIGN.plan;if(!c)return "";
   const t=todayS(),k=awdKey(t),td=c.days[k];
   const line=d=>(d.parts.length?namesOf(d.parts):"")+(d.cardio?(d.parts.length?" + ":"")+esc(d.cardio):"");
+  const mOf=id=>c.lib.find(m=>m.id===id);
+  const mrow=e=>{const m=mOf(e.id);return m?'<button type="button" class="mrow" data-mach="'+m.id+'"><img src="'+m.img+'" alt="" loading="lazy"><span><b>'+esc(m.n)+'</b><small>'+(e.s?e.s+" sets":"")+(e.r?" × "+esc(e.r):"")+'</small></span></button>':""};
   let h='<div class="coachcard"><span class="tp-k">Your plan</span>';
   if(c.note)h+='<p class="note" style="margin:4px 0 8px">'+esc(c.note)+'</p>';
   h+='<div class="ctoday"><small>Today · '+AWD.find(w=>w[0]===k)[1]+'</small><b>'+(td?(line(td)||"Rest"):"Rest day")+'</b>'+(td&&td.note?'<small>'+esc(td.note)+'</small>':"")+'</div>';
   if(c.steps)h+='<small class="note">Step goal: '+nfmt(c.steps)+' a day</small>';
   h+='<div class="cweek">'+AWD.map(w=>{const d=c.days[w[0]];return '<div class="'+(w[0]===k?"on":"")+'"><b>'+w[1].slice(0,3)+'</b><span>'+(d?(line(d)||"Rest"):"Rest")+'</span></div>'}).join("")+'</div>';
+  if(td&&td.ex.length)h+='<div class="mlist"><small class="tp-k">Today\'s machines · tap one to see how</small>'+td.ex.map(mrow).join("")+'</div>';
+  const big=S.mb&&mOf(S.mb);
+  if(big)h+='<div class="mbig"><img src="'+big.img+'" alt="'+esc(big.n)+' machine"><b>'+esc(big.n)+'</b>'+(big.how?'<p class="note" style="margin:4px 0 8px">'+esc(big.how)+'</p>':"")+'<button type="button" class="btn sm" data-mach="">Close</button></div>';
+  if(c.lib.length)h+='<details class="mall"><summary>All your machines ('+c.lib.length+')</summary><div class="mgrid">'+c.lib.map(m=>'<button type="button" class="mtile" data-mach="'+m.id+'"><img src="'+m.img+'" alt="" loading="lazy"><span>'+esc(m.n)+'</span></button>').join("")+'</div></details>';
   const todayParts=td?td.parts:[];
   if(todayParts.length)h+='<div class="btns"><button type="button" class="btn primary" data-trainpick="'+todayParts[0]+'">Start today\'s session</button></div>';
   return h+'</div>';
@@ -1874,6 +1884,7 @@ sheet.addEventListener("click",e=>{
     S.chosen=false;S.pickKey=null;S.open=null;S.ed=null;S.addEx=false;S.manage=false;S.dayAdd=false;S.msg="";
     renderAll();focusSheet();return;
   }
+  if(t.hasAttribute("data-mach")){const id=a("data-mach");S.mb=S.mb===id?"":id;renderAll();return}
   if(t.hasAttribute("data-adpart")){
     const p=a("data-adpart").split("|"),A=S.ad;if(!A||!validPart(p[1]))return;
     const d=A.plan.days[p[0]]||(A.plan.days[p[0]]={parts:[],cardio:"",note:""}),i=d.parts.indexOf(p[1]);

@@ -428,3 +428,13 @@
 .cweek b{width:34px;opacity:.7}.cweek span{flex:1}
 .adin{width:100%;box-sizing:border-box;margin:4px 0;padding:11px 12px;border-radius:10px;border:1px solid var(--line,rgba(255,255,255,.18));background:transparent;color:inherit;font:inherit}
 .adday{display:grid;gap:4px;margin:12px 0;padding-top:10px;border-top:1px solid var(--line,rgba(255,255,255,.1))}
+.mlist{display:grid;gap:8px;margin:8px 0}
+.mrow{display:flex;align-items:center;gap:12px;text-align:left;padding:8px;border-radius:12px;border:1px solid var(--line,rgba(255,255,255,.14));background:transparent;color:inherit;font:inherit;cursor:pointer}
+.mrow img{width:56px;height:72px;object-fit:cover;border-radius:8px;flex:none}
+.mrow span{display:grid;gap:2px}.mrow small{opacity:.75}
+.mbig{display:grid;gap:6px;margin:10px 0;padding:10px;border-radius:14px;background:rgba(255,255,255,.06)}
+.mbig img{width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#000}
+.mall{margin:10px 0}.mall summary{cursor:pointer;font-weight:650;padding:8px 0}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mtile{display:grid;gap:4px;padding:0;border:0;background:none;color:inherit;font:inherit;font-size:12px;text-align:center;cursor:pointer}
+.mtile img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px}
