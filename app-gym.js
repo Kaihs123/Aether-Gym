@@ -15,7 +15,7 @@ const LS={
   set(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}},
   del(k){try{localStorage.removeItem(k)}catch(e){}}
 };
-const KEY={plan:"aethergym-plan",sess:"aethergym-sessions",photos:"aethergym-photos",theme:"aethergym-theme"};
+const KEY={plan:"aethergym-plan",sess:"aethergym-sessions",photos:"aethergym-photos",theme:"aethergym-theme",cardio:"aethergym-cardio"};
 
 /* ---------- dates (local, YYYY-MM-DD) ---------- */
 const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -54,6 +54,7 @@ const DEFAULT_HIDE={"chest-mpress":1,"r-chest-pec-deck":1,"r-shoulders-reverse-p
 let PLAN={unit:"kg",custom:[],goal:10,rest:90,sched:{},uni:{},pick:{},goals:{},groups:DEFAULT_GROUPS.map(g=>g.slice()),day:{},hide:{}};
 let SESS={};
 let PHOTOS=[];
+let CARDIO={};
 let ver=1,IDX=null;
 const S={chosen:false,page:"home",part:"chest",tab:"log",pickKey:null,dayAdd:false,manage:false,date:todayS(),dateAuto:true,open:null,entry:{},ed:null,coachOpen:true,covOpen:false,msg:"",msgErr:false,msgFor:null,
   addEx:false,newName:"",newBw:false,histN:12,sel:null,
@@ -169,6 +170,7 @@ function localWrite(kind){
   if(kind==="plan")ok=LS.set(KEY.plan,JSON.stringify(planOut()));
   else if(kind==="sess")ok=LS.set(KEY.sess,JSON.stringify(SESS));
   else if(kind==="photo")ok=LS.set(KEY.photos,JSON.stringify(PHOTOS));
+  else if(kind==="cardio")ok=LS.set(KEY.cardio,JSON.stringify(CARDIO));
   if(!ok){const e=new Error("This browser's storage is full or blocked.");e.code="local_full";throw e}
 }
 async function persist(j){
@@ -178,6 +180,10 @@ async function persist(j){
   if(j.kind==="sess"){
     const s=SESS[j.key],ref=root.collection("sessions").doc(j.key);
     return s?ref.set(clone(s)):ref.delete();
+  }
+  if(j.kind==="cardio"){
+    const c=CARDIO[j.key],ref=root.collection("cardio").doc(j.key);
+    return c&&c.length?ref.set({b:clone(c)}):ref.delete();
   }
   if(j.kind==="photo"){
     const p=PHOTOS.find(x=>x.id===j.key),ref=root.collection("photos").doc(j.key);
@@ -232,6 +238,8 @@ function loadLocal(){
     const raw=JSON.parse(LS.get(KEY.sess)||"{}")||{};
     SESS={};Object.keys(raw).forEach(d=>{const c=cleanSession(d,raw[d]);if(c)SESS[d]=c});
     const ph=JSON.parse(LS.get(KEY.photos)||"[]");
+    const cr=JSON.parse(LS.get(KEY.cardio)||"{}")||{};
+    CARDIO={};Object.keys(cr).forEach(d=>{const c=cleanCardio(cr[d]);if(c.length)CARDIO[d]=c});
     PHOTOS=(Array.isArray(ph)?ph:[]).map(p=>p&&cleanPhoto(p.id,p)).filter(Boolean);sortPhotos();
   }catch(e){}
   unit=PLAN.unit;
@@ -257,6 +265,13 @@ function subscribe(db,uid){
     pend.forEach(j=>{if(j.kind==="sess")keep(j.key)});
     if(busyKey&&busyKey.indexOf("sess:")===0)keep(busyKey.slice(5));
     SESS=next;ver++;softRender();
+  },fail);
+  root.collection("cardio").onSnapshot(snap=>{
+    live(snap);
+    const next={};
+    snap.docs.forEach(d=>{const c=cleanCardio(d.data()&&d.data().b);if(c.length)next[d.id]=c});
+    Object.keys(CARDIO).forEach(k=>{if(isDirty("cardio:"+k)||pend.has("cardio:"+k)){if(CARDIO[k]&&CARDIO[k].length)next[k]=CARDIO[k];else delete next[k]}});
+    CARDIO=next;ver++;softRender();
   },fail);
   root.collection("photos").onSnapshot(snap=>{
     live(snap);
@@ -570,6 +585,84 @@ function delSet(date,id,i){
   touch("sess",date);
 }
 
+/* ---------- cardio: machines, what each one records, and the log ---------- */
+const CF={min:["Minutes","min",1,1,0],spd:["Speed","",.5,0,0],inc:["Incline","%",.5,0,0],res:["Resistance","",1,0,0],lvl:["Level","",1,0,0],rpm:["RPM","rpm",5,0,0],spm:["Strokes/min","spm",1,0,0],dist:["Distance","",.1,0,0],flr:["Floors","",5,0,0],cal:["Calories","kcal",5,0,0]};
+const MACH=[
+  ["tread","Treadmill",["min","spd","inc","dist","cal"],"Speed and incline are the two big ones. Tap + and − or type the number."],
+  ["cross","Cross trainer",["min","res","inc","dist","cal"],"Elliptical. Incline is the ramp if your machine has one."],
+  ["bike","Exercise bike",["min","res","rpm","dist","cal"],"Upright or recumbent bike."],
+  ["spin","Spin bike",["min","res","rpm","dist","cal"],"Resistance is the knob or the level on the screen."],
+  ["air","Air bike",["min","rpm","dist","cal"],"Assault or Echo bike. Resistance comes from how hard you push."],
+  ["row","Rowing machine",["min","dist","spm","res","cal"],"Resistance is the damper setting, usually 1 to 10."],
+  ["ski","Ski erg",["min","dist","spm","res","cal"],"Resistance is the damper setting."],
+  ["stair","Stair climber",["min","lvl","flr","cal"],"Stairmaster style machine."],
+  ["step","Stepper",["min","lvl","cal"],"Mini stepper or step mill."],
+  ["arc","Arc trainer",["min","res","inc","cal"],"Resistance and incline or ramp."],
+  ["climb","Vertical climber",["min","lvl","cal"],"Climbing machine."],
+  ["ube","Arm bike (UBE)",["min","res","rpm","cal"],"Upper body ergometer."],
+  ["walk","Outdoor walk or run",["min","dist","cal"],"Out and about, no machine."],
+  ["other","Other",["min","dist","cal"],"Anything else. Add what you did."]
+];
+const machOf=id=>MACH.find(m=>m[0]===id)||MACH[MACH.length-1];
+function cleanCardio(raw){
+  if(!Array.isArray(raw))return [];
+  const out=[];
+  raw.slice(0,40).forEach(b=>{
+    if(!b||typeof b!=="object"||!MACH.some(m=>m[0]===b.m))return;
+    const o={id:String(b.id||("c"+Date.now().toString(36)+Math.random().toString(36).slice(2,5))).slice(0,24),m:b.m,t:+b.t||0};
+    Object.keys(CF).forEach(k=>{const v=parseFloat(b[k]);if(isFinite(v)&&v>=0&&v<100000)o[k]=Math.round(v*100)/100});
+    if(o.min>0)out.push(o);
+  });
+  return out;
+}
+const spdU=()=>unit==="lb"?"mph":"km/h",distU=()=>unit==="lb"?"mi":"km";
+const cUnit=k=>k==="spd"?spdU():k==="dist"?distU():CF[k][1];
+function fmtCardio(b){
+  const m=machOf(b.m),bits=[b.min+" min"];
+  m[2].forEach(k=>{if(k!=="min"&&b[k]>0)bits.push((k==="inc"?b[k]+"% incline":k==="spd"?b[k]+" "+spdU():k==="dist"?b[k]+" "+distU():k==="res"?"resistance "+b[k]:k==="lvl"?"level "+b[k]:k==="rpm"?b[k]+" rpm":k==="spm"?b[k]+" spm":k==="flr"?b[k]+" floors":b[k]+" kcal"))});
+  return bits.join(" · ");
+}
+function cardioLast(mid){
+  const ds=Object.keys(CARDIO).sort().reverse();
+  for(const d of ds){const l=CARDIO[d].filter(b=>b.m===mid).pop();if(l)return l}
+  return null;
+}
+function cardioPrefill(mid){
+  const l=cardioLast(mid),o={};
+  machOf(mid)[2].forEach(k=>{o[k]=l&&l[k]>0?String(l[k]):""});
+  if(!o.min)o.min=mid==="tread"?"20":"15";
+  if(mid==="tread"&&!l){o.spd=unit==="lb"?"4":"6.5";o.inc="1"}
+  return o;
+}
+function cardioWeek(){
+  const t=todayS(),ws=wkStart(t);let mins=0,n=0,dist=0,days=0;
+  Object.keys(CARDIO).forEach(d=>{if(d>=ws&&d<=t){days++;CARDIO[d].forEach(b=>{n++;mins+=b.min;if(b.dist&&(b.m==="tread"||b.m==="walk"||b.m==="bike"||b.m==="spin"||b.m==="cross"))dist+=b.dist})}});
+  return {mins:mins,n:n,days:days,dist:Math.round(dist*10)/10};
+}
+function viewCardio(){
+  const t=todayS();
+  if(!S.cm||!MACH.some(m=>m[0]===S.cm))S.cm="tread";
+  if(!S.cf||S.cfm!==S.cm){S.cf=cardioPrefill(S.cm);S.cfm=S.cm}
+  const m=machOf(S.cm),wk=cardioWeek(),today=CARDIO[t]||[];
+  let h=head("Cardio","Log cardio")+'<p class="note intro">Pick your machine, set the numbers, then tap Add cardio.</p>';
+  h+='<div class="cwk"><div><b>'+wk.mins+'</b><small>min this week</small></div><div><b>'+wk.days+'</b><small>'+(wk.days===1?"day":"days")+'</small></div><div><b>'+wk.dist+'</b><small>'+distU()+' (distance machines)</small></div></div>';
+  h+='<h3>Machine</h3><div class="cmach" role="group" aria-label="Cardio machine">'+MACH.map(x=>'<button type="button" data-cmach="'+x[0]+'" aria-pressed="'+(x[0]===S.cm)+'">'+x[1]+'</button>').join("")+'</div>';
+  h+='<div class="addcard cform"><b class="ctitle">'+m[1]+'</b><small class="note">'+m[3]+'</small>';
+  m[2].forEach(k=>{
+    const f=CF[k],u=cUnit(k);
+    h+='<div class="erow"><label for="cf-'+k+'">'+f[0]+(u?' <span class="cu">'+u+'</span>':"")+'</label><div class="step"><button type="button" data-cstep="'+k+'|-1" aria-label="Less '+f[0].toLowerCase()+'">−</button>'+
+      '<input type="number" id="cf-'+k+'" data-cf="'+k+'" inputmode="decimal" step="any" min="0" value="'+esc(S.cf[k]||"")+'" placeholder="'+(k==="min"?"":"optional")+'"><button type="button" data-cstep="'+k+'|1" aria-label="More '+f[0].toLowerCase()+'">+</button></div></div>';
+  });
+  const l=cardioLast(S.cm);
+  h+='<div class="btns"><button type="button" class="btn primary" data-cadd>Add cardio</button></div>'+(l?'<small class="note">Numbers start from your last '+m[1].toLowerCase()+' session. Change what is different.</small>':"")+
+    '<p class="msg'+(S.msgErr?" err":"")+'" role="status">'+(S.msgFor==="__cardio"?esc(S.msg):"")+'</p></div>';
+  h+='<h3>Today</h3>';
+  h+=today.length?'<div class="clist">'+today.map(b=>'<div class="crow"><span><b>'+machOf(b.m)[1]+'</b><small>'+fmtCardio(b)+'</small></span><button type="button" class="btn sm" data-cdel="'+t+'|'+b.id+'" aria-label="Delete this cardio entry">Delete</button></div>').join("")+'</div>':'<p class="note">Nothing logged today yet.</p>';
+  const past=Object.keys(CARDIO).filter(d=>d<t).sort().reverse().slice(0,10);
+  if(past.length)h+='<h3>Recent</h3><div class="clist">'+past.map(d=>'<div class="cday"><small class="cdate">'+dShort(d)+'</small>'+CARDIO[d].map(b=>'<div class="crow"><span><b>'+machOf(b.m)[1]+'</b><small>'+fmtCardio(b)+'</small></span><button type="button" class="btn sm" data-cdel="'+d+'|'+b.id+'" aria-label="Delete this cardio entry">Delete</button></div>').join("")+'</div>').join("")+'</div>';
+  return h;
+}
+
 const planOf=d=>PLAN.sched[d]||[];
 function setPlan(d,keys,quiet){
   if(keys.length)PLAN.sched[d]=keys.slice();else delete PLAN.sched[d];
@@ -625,6 +718,7 @@ ORBS.forEach(o=>{
 const NAVS=[
   ["home","Overview",'<path d="M3 10.5 12 3l9 7.5M5.5 9.5V21h13V9.5M9 21v-7h6v7"/>'],
   ["train","Train",'<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>'],
+  ["cardio","Cardio",'<path d="M3 12h4l2.5-6 4 12 2.5-6H21"/>'],
   ["cal","Calendar",'<path d="M4 5h16v15H4zM8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/>'],
   ["photos","Photos",'<path d="M4 8h3l1.6-2.5h6.8L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/>'],
   ["settings","Settings",'<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/>']
@@ -896,7 +990,9 @@ function viewTrain(){
   const tabs=seg("train",[["log","Log"],["history","History"],["records","Records"]],S.tab);
   let body="";
   if(S.tab==="log")body=trainLog(P);else if(S.tab==="history")body=trainHistory(P);else body=trainRecords(P);
-  return (dps.length>1?head("Training day",namesOf(dps),dps.length>2?"long":""):head("Body part",P.label))+dayBar(P,dd)+tabs+body;
+  const anySets=!!(SESS[dd]&&Object.keys(SESS[dd].ex).length);
+  const exit='<div class="exitbar"><button type="button" class="btn sm" data-trainexit="back">‹ Body parts</button><button type="button" class="btn sm '+(anySets?"primary":"")+'" data-trainexit="'+(anySets?"finish":"cancel")+'">'+(anySets?"Finish workout":"Cancel workout")+'</button></div>';
+  return exit+(dps.length>1?head("Training day",namesOf(dps),dps.length>2?"long":""):head("Body part",P.label))+dayBar(P,dd)+tabs+body;
 }
 function newExForm(){
   return '<div class="addcard addex"><label class="l" for="newEx">Exercise name</label><input type="text" id="newEx" maxlength="40" placeholder="e.g. Smith machine press" value="'+esc(S.newName)+'" autocomplete="off">'+
@@ -1282,7 +1378,7 @@ let lastHtml="";
 function renderAll(soft){
   pendingRender=false;
   updateChrome();
-  const v={home:viewHome,train:viewTrain,cal:viewCal,photos:viewPhotos,settings:viewSettings}[S.page]||viewHome;
+  const v={home:viewHome,train:viewTrain,cardio:viewCardio,cal:viewCal,photos:viewPhotos,settings:viewSettings}[S.page]||viewHome;
   const html=v();
   /* a refresh that arrives from the server with nothing new to show leaves the screen alone, so nothing flickers or jumps */
   if(soft===true&&html===lastHtml){renderLb();setStatus();return}
@@ -1303,9 +1399,14 @@ function helpTopic(){
     const P=partOf(S.part),dd=S.dateAuto?todayS():S.date;
     return isPicking(P,dd)?"exercises":"logging";
   }
-  return {home:"overview",cal:"plan",photos:"photos",settings:"settings"}[S.page]||"menu";
+  return {home:"overview",cardio:"cardio",cal:"plan",photos:"photos",settings:"settings"}[S.page]||"menu";
 }
 const HELP={
+  cardio:{t:"Log cardio",s:[
+    ["Pick your machine","Treadmill, bikes, rower, cross trainer, stair climber and more. Each one shows the numbers that matter for it."],
+    ["Set the numbers","Minutes is required. Treadmill has speed and incline. Use + and − or type. Everything else is optional."],
+    ["Tap Add cardio","It is saved to today. You can add more than one, and delete a mistake with Delete."]],
+    tip:"Next time the numbers start from your last session on that machine."},
   start:{t:"Start a workout",s:[
     ["Pick a body part","Tap the recommended one, or any body part card. Today's goal is just to choose what to train."],
     ["Choose your exercises","Tap each exercise you plan to do. A tick means it is in your session. Then press Start session."],
@@ -1350,7 +1451,7 @@ const HELP={
     ["Backup","Copy your workouts as text to keep a spare."]]},
   install:{t:"Put it on your home screen",s:[["Install the app","It opens full screen like an app and loads faster."]],install:true}
 };
-const TOPIC_LIST=[["start","Start a workout"],["logging","Add weight, reps and sets"],["exercises","Choose your exercises"],["parts","Train more than one body part"],["plan","Calendar and planning"],["photos","Progress photos"],["settings","Settings"],["install","Put it on your home screen"]];
+const TOPIC_LIST=[["cardio","Log cardio"],["start","Start a workout"],["logging","Add weight, reps and sets"],["exercises","Choose your exercises"],["parts","Train more than one body part"],["plan","Calendar and planning"],["photos","Progress photos"],["settings","Settings"],["install","Put it on your home screen"]];
 const TOUR=[
   {t:"Welcome to AETHER Gym",b:"Log your workouts, watch your lifts go up and plan your week. Here is how it works in under a minute.",m:"welcome"},
   {t:"1. Pick a body part",b:"Open Train and tap what you want to work today. The recommended card shows the body part you are furthest behind on.",m:"pick"},
@@ -1446,6 +1547,7 @@ const sheet=$("sheet");
 function say(id,msg,err){S.msg=msg;S.msgErr=!!err;S.msgFor=id}
 function readNum(sel){const el=sheet.querySelector(sel);return el?parseFloat(el.value):NaN}
 
+sheet.addEventListener("input",e=>{const el=e.target;if(el&&el.hasAttribute&&el.hasAttribute("data-cf")){S.cf=S.cf||{};S.cf[el.getAttribute("data-cf")]=el.value}});
 sheet.addEventListener("click",e=>{if(e.target.closest('[data-welcome="hide"]')){LS.set("aether-gym-welcome","1");renderAll()}});
 sheet.addEventListener("click",e=>{
   const t=e.target.closest("button");if(!t)return;
@@ -1658,6 +1760,34 @@ sheet.addEventListener("click",e=>{
     const k=a("data-trainpick");if(!validPart(k))return;
     S.chosen=true;S.tab="log";syncWheel(k);S.open=null;S.ed=null;S.addEx=false;S.dayAdd=false;S.msg="";renderAll();focusSheet();return;
   }
+  if(t.hasAttribute("data-trainexit")){
+    const m=a("data-trainexit"),d=S.dateAuto?todayS():S.date;
+    if(m==="cancel"&&!(SESS[d]&&Object.keys(SESS[d].ex).length)){delete PLAN.day[d];delete PLAN.pick[d];touch("plan","plan")}
+    S.chosen=false;S.pickKey=null;S.open=null;S.ed=null;S.addEx=false;S.manage=false;S.dayAdd=false;S.msg="";
+    renderAll();focusSheet();return;
+  }
+  if(t.hasAttribute("data-cmach")){S.cm=a("data-cmach");S.cf=null;S.msg="";renderAll();return}
+  if(t.hasAttribute("data-cstep")){
+    const p=a("data-cstep").split("|"),k=p[0],f=CF[k];if(!f)return;
+    const el=sheet.querySelector('[data-cf="'+k+'"]');if(!el)return;
+    let v=parseFloat(el.value);if(!isFinite(v))v=0;
+    v=Math.max(f[3]?1:0,Math.round((v+parseInt(p[1],10)*f[2])*100)/100);
+    el.value=v;S.cf=S.cf||{};S.cf[k]=String(v);return;
+  }
+  if(t.hasAttribute("data-cadd")){
+    const m=machOf(S.cm),o={id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),m:m[0],t:Date.now()};
+    m[2].forEach(k=>{const el=sheet.querySelector('[data-cf="'+k+'"]'),v=el?parseFloat(el.value):NaN;if(isFinite(v)&&v>=0)o[k]=v});
+    if(!(o.min>0)){say("__cardio","Enter how many minutes you did.",true);renderAll();return}
+    const d=todayS();
+    CARDIO[d]=(CARDIO[d]||[]).concat(cleanCardio([o]));
+    touch("cardio",d);S.cf=null;say("__cardio","Added "+m[1].toLowerCase()+".",false);renderAll();return;
+  }
+  if(t.hasAttribute("data-cdel")){
+    const v=a("data-cdel").split("|"),d=v[0],id=v[1],arr=CARDIO[d];if(!arr)return;
+    if(!confirm("Delete this cardio entry?"))return;
+    CARDIO[d]=arr.filter(b=>b.id!==id);if(!CARDIO[d].length)delete CARDIO[d];
+    touch("cardio",d);renderAll();return;
+  }
   if(t.hasAttribute("data-dprem")){
     const m=a("data-dprem");if(!validPart(m))return;
     const d=S.dateAuto?todayS():S.date,cur=dayParts(d,S.part).filter(x=>x!==m);if(!cur.length)return;
@@ -1678,7 +1808,7 @@ sheet.addEventListener("click",e=>{
     setPlan(d,same?[]:PARTS.map(x=>x.key).filter(x=>g.indexOf(x)>=0));S.msg="";renderAll();return;
   }
   if(t.hasAttribute("data-copy")){
-    const txt=JSON.stringify({app:"aether-gym",version:1,unitShown:unit,plan:planOut(),sessions:SESS,photos:PHOTOS.map(p=>({id:p.id,date:p.date,note:p.note}))},null,1);
+    const txt=JSON.stringify({app:"aether-gym",version:1,unitShown:unit,plan:planOut(),sessions:SESS,cardio:CARDIO,photos:PHOTOS.map(p=>({id:p.id,date:p.date,note:p.note}))},null,1);
     const fallback=()=>{S.exportText=txt;S.copied=false;renderAll();const x=$("exp");if(x){x.focus();x.select()}};
     try{
       if(!navigator.clipboard||!navigator.clipboard.writeText){fallback();return}
@@ -1823,6 +1953,7 @@ if(window.AETHER)AETHER.app({
     return [
       {id:"home",label:"Training overview",kw:"last 30 days goals personal bests"},
       {id:"train",label:"Train",kw:"log session sets workout"},
+      {id:"cardio",label:"Cardio",kw:"treadmill speed incline bike rower cross trainer stair climber elliptical run walk"},
       {id:"cal",label:"Training calendar",kw:"plan schedule days streak"},
       {id:"photos",label:"Progress photos",kw:"pictures"},
       {id:"settings",label:"Gym settings",kw:"unit kg lb rest timer backup goals training days"}
@@ -1830,7 +1961,7 @@ if(window.AETHER)AETHER.app({
   },
   go(sec){
     if(sec.indexOf("part:")===0){const k=sec.slice(5);if(!validPart(k))return;S.tab="log";pickPart(k);return}
-    if(["home","train","cal","photos","settings"].indexOf(sec)<0)return;
+    if(["home","train","cardio","cal","photos","settings"].indexOf(sec)<0)return;
     S.page=sec;S.msg="";S.ed=null;S.exportText=null;S.copied=false;renderAll();focusSheet();
   },
   summary(){
