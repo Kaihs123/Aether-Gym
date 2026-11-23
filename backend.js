@@ -68,7 +68,7 @@ function signedIn(session){
   if(!session||!session.user)return;
   if(recovery)return;
   hideAuth();
-  if(!user){user=session.user;resolveReady(user)}
+  if(!user){user=session.user;resolveReady(user);setTimeout(function(){if(window.AETHER_INSTALL)AETHER_INSTALL.firstRun()},1500)}
 }
 sb.auth.onAuthStateChange(function(ev,session){
   if(ev==="PASSWORD_RECOVERY"){recovery=true;showAuth("newpw");return}
