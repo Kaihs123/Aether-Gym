@@ -1013,7 +1013,7 @@ function homeTop(I,nx,np){
       h='<div class="hero"><span>Planned today</span><strong>'+names+'</strong><small>'+(todo.length===tp.length?"Not started yet.":"Still to do: "+todo.map(k=>partOf(k).label).join(", ")+".")+'</small></div>'+
         '<button type="button" class="btn primary" data-go="'+f.key+'" style="width:100%;margin:-4px 0 18px">Train '+f.label.toLowerCase()+'</button>';
     }else h='<div class="hero"><span>Planned today</span><strong>'+names+'</strong><small>All done. Nice work.</small></div>';
-  }else if(AF().plan&&Object.keys(PLAN.sched).some(d=>d>t&&PLAN.sched[d].length)){
+  }else if(Object.keys(PLAN.sched).some(d=>d>t&&PLAN.sched[d].length)){
     const nd=Object.keys(PLAN.sched).filter(d=>d>t&&PLAN.sched[d].length).sort()[0],ks=PLAN.sched[nd],exn=[].concat.apply([],ks.map(k=>sessionEx(partOf(k),nd))).map(e=>e.n);
     h='<div class="hero"><span>Next up · '+dShort(nd)+'</span><strong>'+namesOf(ks)+'</strong><small>'+(exn.length?esc(exn.slice(0,6).join(", "))+(exn.length>6?" +"+(exn.length-6)+" more":""):"No exercises chosen yet.")+'</small></div>'+
       '<button type="button" class="btn primary" data-planday="'+nd+'" style="width:100%;margin:-4px 0 18px">'+(exn.length?"View plan":"Choose exercises")+'</button>';
