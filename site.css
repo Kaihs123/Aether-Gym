@@ -19,3 +19,35 @@
 .acct-pop small{font-size:12px;color:var(--muted,#8592a4)}
 .acct-pop b{font-size:14px;word-break:break-all;margin-bottom:8px}
 .acct-pop button{height:40px;border-radius:10px;border:1px solid var(--line-2,rgba(128,128,128,.35));background:none;color:var(--ink,inherit);font:600 14px var(--body,inherit);cursor:pointer}
+
+/* app feel */
+html{-webkit-tap-highlight-color:transparent;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+button,.hub-ni,.hub-tb{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+
+/* install banner and steps */
+.inst-bar{position:fixed;z-index:110;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));margin:0 auto;max-width:460px;display:flex;align-items:center;gap:12px;padding:12px 8px 12px 12px;border-radius:16px;border:1px solid var(--line-2,rgba(128,128,128,.35));background:var(--card,#0e1520);color:var(--ink,#f2f5fa);box-shadow:var(--pop,0 16px 40px -12px rgba(0,0,0,.6));animation:inst-in .35s ease both}
+@keyframes inst-in{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.inst-bar{animation:none}}
+.inst-bar .ic{flex:none;width:40px;height:40px;border-radius:11px;background:url(icons/icon-192.png) center/cover}
+.inst-bar .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.inst-bar b{font:650 14.5px/1.25 var(--display,inherit)}
+.inst-bar small{font-size:12.5px;line-height:1.35;color:var(--muted,#8592a4)}
+.inst-bar .go{flex:none;height:38px;padding:0 16px;border:0;border-radius:10px;background:var(--btn,#e5574f);color:var(--btn-ink,#fff);font:650 14px var(--body,inherit);cursor:pointer}
+.inst-bar .x{flex:none;width:36px;height:38px;border:0;background:none;color:var(--muted,#8592a4);font-size:24px;line-height:1;cursor:pointer}
+.app-gym.resting~.inst-bar,.resting .inst-bar{display:none}
+.inst-sheet{position:fixed;inset:0;z-index:2100;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding:0 0 env(safe-area-inset-bottom)}
+.inst-card{width:min(100%,460px);max-height:92%;overflow:auto;box-sizing:border-box;padding:22px 20px 20px;border-radius:20px 20px 0 0;background:var(--card,#0e1520);color:var(--ink,#f2f5fa);border:1px solid var(--line,rgba(128,128,128,.25));border-bottom:0}
+@media (min-width:600px){.inst-sheet{align-items:center}.inst-card{border-radius:20px;border-bottom:1px solid var(--line,rgba(128,128,128,.25))}}
+.inst-h{display:block;font:650 19px/1.25 var(--display,inherit);letter-spacing:-.015em}
+.inst-p{margin:8px 0 14px;font-size:14px;line-height:1.5;color:var(--muted,#8592a4)}
+.inst-card ol{list-style:none;margin:0 0 16px;padding:0}
+.inst-card li{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line,rgba(128,128,128,.25))}
+.inst-card li:first-child{border-top:0}
+.inst-card .n{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--btn,#e5574f);color:var(--btn-ink,#fff);font:700 13px/1 var(--display,inherit)}
+.inst-card .t{flex:1;font-size:14.5px;line-height:1.45}
+.inst-card .i{flex:none;width:34px;height:34px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line-2,rgba(128,128,128,.35));color:var(--accent,#3aa0e8)}
+.inst-card .i svg{width:20px;height:20px}
+.inst-ok{width:100%;height:48px;border:0;border-radius:12px;background:var(--btn,#e5574f);color:var(--btn-ink,#fff);font:650 16px var(--body,inherit);cursor:pointer}
+.upd-bar{position:fixed;z-index:115;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:999px;background:var(--ink,#f2f5fa);color:var(--bg,#0a0f16);font-size:14px;font-weight:600;box-shadow:0 10px 30px -10px rgba(0,0,0,.6)}
+.upd-bar button{height:32px;padding:0 14px;border:0;border-radius:999px;background:var(--bg,#0a0f16);color:var(--ink,#f2f5fa);font:650 13.5px var(--body,inherit);cursor:pointer}

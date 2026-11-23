@@ -179,9 +179,11 @@ window.AETHER_ACCOUNT={mount:function(){
       b.addEventListener("click",function(){
         if(pop){close();return}
         pop=document.createElement("div");pop.className="acct-pop";
-        pop.innerHTML='<small>Signed in as</small><b>'+esc(user.email||"")+'</b><button type="button">Sign out</button>';
+        var inst=window.AETHER_INSTALL&&AETHER_INSTALL.can();
+        pop.innerHTML='<small>Signed in as</small><b>'+esc(user.email||"")+'</b>'+(inst?'<button type="button" class="acct-inst">Add to home screen</button>':'')+'<button type="button" class="acct-out">Sign out</button>';
+        if(inst)pop.querySelector(".acct-inst").addEventListener("click",function(){close();AETHER_INSTALL.open()});
         document.body.appendChild(pop);
-        pop.querySelector("button").addEventListener("click",function(){this.disabled=true;sb.auth.signOut().then(function(){location.reload()})});
+        pop.querySelector(".acct-out").addEventListener("click",function(){this.disabled=true;sb.auth.signOut().then(function(){location.reload()})});
         setTimeout(function(){document.addEventListener("click",out,true)},0);
       });
     },100);
