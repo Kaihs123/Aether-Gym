@@ -223,7 +223,7 @@ let pendingRender=false;
 const typing=()=>{const a=document.activeElement;return !!(a&&a.closest&&a.closest("#g-sheet")&&/^(INPUT|TEXTAREA)$/.test(a.tagName))};
 function softRender(){
   if(typing()){pendingRender=true;updateChrome();return}
-  renderAll();
+  renderAll(true);
 }
 
 function loadLocal(){
@@ -850,14 +850,15 @@ function viewHome(){
 
 function dayBar(P,d){
   const parts=dayParts(d,P.key),I=idx(),rest=PARTS.filter(x=>parts.indexOf(x.key)<0),combo=parts.length>1&&!S.pickKey&&parts.every(k=>sessionEx(partOf(k),d).length>0);
+  let locked=false;
   let h='<div class="daybar" role="group" aria-label="Body parts in this session">'+parts.map(k=>{
-    const bp=I.byDate[d]&&I.byDate[d].parts[k],n=bp?bp.sets:0;
-    return '<button type="button" class="dp" data-dpart="'+k+'" aria-pressed="'+(!combo&&k===P.key)+'"'+(combo?' title="Jump to '+partOf(k).label+'"':'')+'><b>'+partOf(k).label+'</b><small>'+(n?n+(n===1?" set":" sets"):"no sets yet")+'</small></button>';
-  }).join("")+(rest.length||parts.length>1?'<button type="button" class="dp add" data-dpadd="'+(S.dayAdd?"cancel":"open")+'" aria-expanded="'+S.dayAdd+'" aria-label="Add or remove body parts in this session"><b>'+(S.dayAdd?"×":"±")+'</b><small>'+(S.dayAdd?"Close":"Parts")+'</small></button>':"")+'</div>';
-  if(S.dayAdd&&(rest.length||parts.length>1))h+='<div class="chips dpadd" role="group" aria-label="Add or remove body parts in this session">'+
-    (parts.length>1?parts.map(k=>{const bp=I.byDate[d]&&I.byDate[d].parts[k],n=bp?bp.sets:0;return '<button type="button" data-dprem="'+k+'"'+(n?' disabled title="Has sets logged today"':'')+'>− '+partOf(k).label+'</button>'}).join(""):"")+
-    rest.map(x=>'<button type="button" data-dpadd="'+x.key+'">+ '+x.label+'</button>').join("")+'</div>'+
-    (parts.length>1?'<p class="note" style="margin:6px 0 10px">Take a part off today\'s session with −. A part that already has sets logged today can\'t be removed.</p>':'');
+    const bp=I.byDate[d]&&I.byDate[d].parts[k],n=bp?bp.sets:0,can=parts.length>1&&!n;
+    if(parts.length>1&&n)locked=true;
+    return '<div class="dpw'+(can?' hasx':'')+'"><button type="button" class="dp" data-dpart="'+k+'" aria-pressed="'+(!combo&&k===P.key)+'"'+(combo?' title="Jump to '+partOf(k).label+'"':'')+'><b>'+partOf(k).label+'</b><small>'+(n?n+(n===1?" set":" sets"):"no sets yet")+'</small></button>'+
+      (can?'<button type="button" class="dpx" data-dprem="'+k+'" aria-label="Remove '+partOf(k).label+' from today\'s session"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>':'')+'</div>';
+  }).join("")+'</div>';
+  if(rest.length)h+='<div class="dpmore" role="group" aria-label="Add a body part to today\'s session"><span>Also train today</span>'+rest.map(x=>'<button type="button" class="dpa" data-dpadd="'+x.key+'">+ '+x.label+'</button>').join("")+'</div>';
+  if(locked)h+='<p class="note dpnote">A part with sets logged today stays in the session.</p>';
   return h;
 }
 /* Train starts with nothing chosen: every body part with how far behind it is this week, and a recommendation. */
@@ -1275,11 +1276,16 @@ function centerTab(b){
   const l=Math.max(0,b.offsetLeft-(bar.clientWidth-b.offsetWidth)/2);
   try{bar.scrollTo({left:l,behavior:reduce?"auto":"smooth"})}catch(e){bar.scrollLeft=l}
 }
-function renderAll(){
+let lastHtml="";
+function renderAll(soft){
   pendingRender=false;
   updateChrome();
   const v={home:viewHome,train:viewTrain,cal:viewCal,photos:viewPhotos,settings:viewSettings}[S.page]||viewHome;
-  $("sheet").innerHTML=v();
+  const html=v();
+  /* a refresh that arrives from the server with nothing new to show leaves the screen alone, so nothing flickers or jumps */
+  if(soft===true&&html===lastHtml){renderLb();setStatus();return}
+  lastHtml=html;
+  $("sheet").innerHTML=html;
   renderLb();
   setStatus();
 }

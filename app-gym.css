@@ -301,3 +301,20 @@
 .app-gym .welcome .n{width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--tint-fill,var(--tint));color:var(--tint-fill-ink,#fff);font:700 13px/1 var(--display)}
 .app-gym .welcome li b{display:block;font-size:14.5px}
 .app-gym .welcome li small{display:block;font-size:13px;color:var(--muted);line-height:1.45;margin-top:2px}
+
+/* body parts in today's session: one row to switch or remove, one row to add */
+.app-gym .daybar{gap:8px;margin:0 0 10px}
+.app-gym .dpw{position:relative;flex:1 1 0;min-width:96px;display:flex}
+.app-gym .dpw .dp{flex:1;min-height:56px}
+.app-gym .dpw.hasx .dp{padding-right:34px}
+.app-gym .dpx{position:absolute;top:4px;right:4px;width:30px;height:30px;border:0;border-radius:50%;background:none;color:var(--muted);display:grid;place-items:center;padding:0}
+.app-gym .dpx::after{content:"";position:absolute;inset:-8px -6px -8px -10px}
+.app-gym .dpx svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.app-gym .dpx:hover,.app-gym .dpx:active{color:var(--negative);background:var(--hover)}
+.app-gym .dpmore{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px}
+.app-gym .dpmore>span{flex:none;font-size:12.5px;color:var(--muted);margin-right:2px}
+.app-gym .dpa{height:40px;padding:0 14px;border-radius:20px;border:1.5px dashed var(--line-2);background:none;color:var(--ink-2);font:600 13.5px var(--body)}
+.app-gym .dpa:active{background:var(--hover)}
+.app-gym .dpnote{margin:-4px 0 12px;font-size:12.5px}
+.app-gym .dp,.app-gym .dpa,.app-gym .dpx,.app-gym .tp-part{touch-action:manipulation}
+.app-gym .hub-scroll,.hub-page .hub-scroll{overflow-anchor:none}

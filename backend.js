@@ -81,7 +81,9 @@ sb.auth.getSession().then(function(r){
 });
 
 /* ---------- the database interface the Gym expects ---------- */
-var listeners=new Set(),channel=null;
+var listeners=new Set(),channel=null,writing=0,writeSeq=0;
+function wstart(){writing++;writeSeq++}
+function wend(){writing=Math.max(0,writing-1);writeSeq++;if(!writing)setTimeout(refreshAll,250)}
 function ensureChannel(){
   if(channel)return;
   channel=sb.channel("gym-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:T,filter:"user_id=eq."+user.id},function(p){
@@ -112,8 +114,8 @@ function mkDoc(p0){
   return {
     id:path.split("/").pop(),
     get:function(){return sb.from(T).select("data").eq("path",path).maybeSingle().then(function(r){if(r.error)throw wrap(r.error);return docSnap(path,r.data?r.data.data:null)})},
-    set:function(obj){return sb.from(T).upsert({user_id:user.id,path:path,data:obj,updated_at:new Date().toISOString()},{onConflict:"user_id,path"}).then(function(r){if(r.error)throw wrap(r.error)},function(e){throw wrap(e)})},
-    delete:function(){return sb.from(T).delete().eq("user_id",user.id).eq("path",path).then(function(r){if(r.error)throw wrap(r.error)},function(e){throw wrap(e)})},
+    set:function(obj){wstart();return sb.from(T).upsert({user_id:user.id,path:path,data:obj,updated_at:new Date().toISOString()},{onConflict:"user_id,path"}).then(function(r){wend();if(r.error)throw wrap(r.error)},function(e){wend();throw wrap(e)})},
+    delete:function(){wstart();return sb.from(T).delete().eq("user_id",user.id).eq("path",path).then(function(r){wend();if(r.error)throw wrap(r.error)},function(e){wend();throw wrap(e)})},
     collection:function(name){return mkCol(path+"/"+name)},
     onSnapshot:function(cb,fail){return listen(path,false,cb,fail)}
   };
@@ -122,16 +124,22 @@ function mkCol(prefix){
   return {doc:function(id){return mkDoc(prefix+"/"+id)},onSnapshot:function(cb,fail){return listen(prefix,true,cb,fail)}};
 }
 function listen(path,isCol,cb,fail){
-  var busy=false,again=false,dead=false;
+  var busy=false,again=false,dead=false,last=null;
   function refresh(){
     if(dead)return;
     if(busy){again=true;return}
-    busy=true;
+    if(writing){again=true;busy=true;setTimeout(function(){busy=false;if(again){again=false;refresh()}},400);return}
+    busy=true;var seq0=writeSeq;
     var q=sb.from(T).select("path,data");
     q=isCol?q.like("path",path+"/%"):q.eq("path",path);
     q.then(function(r){
       if(r.error)throw wrap(r.error);
       var rows=r.data||[];
+      /* a save started while this was loading, so the result may be older than what you just did: load again instead of showing it */
+      if(seq0!==writeSeq||writing){again=true;return}
+      var sig=JSON.stringify(rows);
+      if(sig===last)return;
+      last=sig;
       if(!isCol){if(!dead)cb(docSnap(path,rows.length?rows[0].data:null));return}
       var docs=rows.map(function(x){return {id:x.path.split("/").pop(),data:function(){return x.data}}});
       var ids=[];docs.forEach(function(d){var a=d.data()&&d.data().asset;if(typeof a==="string")ids.push(a)});
