@@ -717,20 +717,28 @@ function assignCard(){
   const t=todayS(),k=awdKey(t),td=c.days[k];
   const line=d=>(d.parts.length?namesOf(d.parts):"")+(d.cardio?(d.parts.length?" + ":"")+esc(d.cardio):"");
   const mOf=id=>c.lib.find(m=>m.id===id);
-  const mrow=e=>{const m=mOf(e.id);return m?'<button type="button" class="mrow" data-mach="'+m.id+'"><img src="'+m.img+'" alt="" loading="lazy"><span><b>'+esc(m.n)+'</b><small>'+(e.s?e.s+" sets":"")+(e.r?" × "+esc(e.r):"")+'</small></span></button>':""};
+  const bigOf=(m,key)=>'<div class="mbig"><img src="'+m.img+'" alt="'+esc(m.n)+' machine"><b>'+esc(m.n)+'</b>'+(m.how?'<p class="note" style="margin:4px 0 8px">'+esc(m.how)+'</p>':"")+'<button type="button" class="btn sm" data-mach="'+key+'">Close</button></div>';
+  const mrow=(e,dk)=>{const m=mOf(e.id);if(!m)return "";const key=dk+"|"+m.id,on=S.mb===key;
+    return '<div class="mwrap"><button type="button" class="mrow'+(on?" on":"")+'" data-mach="'+key+'" aria-expanded="'+on+'"><img src="'+m.img+'" alt="" loading="lazy"><span><b>'+esc(m.n)+'</b><small>'+(e.s?e.s+" sets":"")+(e.r?" × "+esc(e.r):"")+'</small></span><em>'+(on?"Close":"Tap to enlarge")+'</em></button>'+(on?bigOf(m,key):"")+'</div>'};
   let h='<div class="coachcard"><span class="tp-k">Your plan</span>';
   if(c.note)h+='<p class="note" style="margin:4px 0 8px">'+esc(c.note)+'</p>';
-  h+='<div class="ctoday"><small>Today · '+AWD.find(w=>w[0]===k)[1]+'</small><b>'+(td?(line(td)||"Rest"):"Rest day")+'</b>'+(td&&td.note?'<small>'+esc(td.note)+'</small>':"")+'</div>';
+  h+='<div class="ctoday"><small>Today · '+AWD.find(w=>w[0]===k)[1]+'</small><b>'+(td?(td.parts.length?namesOf(td.parts):(td.cardio?esc(td.cardio):"Rest day")):"Rest day")+'</b>'+(td&&td.note?'<small>'+esc(td.note)+'</small>':"")+'</div>';
   if(c.steps)h+='<small class="note">Step goal: '+nfmt(c.steps)+' a day</small>';
-  h+='<div class="cweek">'+AWD.map(w=>{const d=c.days[w[0]];return '<div class="'+(w[0]===k?"on":"")+'"><b>'+w[1].slice(0,3)+'</b><span>'+(d?(line(d)||"Rest"):"Rest")+'</span></div>'}).join("")+'</div>';
-  if(td&&td.ex.length)h+='<div class="mlist"><small class="tp-k">Today\'s machines · tap one to see how</small>'+td.ex.map(mrow).join("")+'</div>';
-  const big=S.mb&&mOf(S.mb);
-  if(big)h+='<div class="mbig"><img src="'+big.img+'" alt="'+esc(big.n)+' machine"><b>'+esc(big.n)+'</b>'+(big.how?'<p class="note" style="margin:4px 0 8px">'+esc(big.how)+'</p>':"")+'<button type="button" class="btn sm" data-mach="">Close</button></div>';
-  if(c.lib.length)h+='<details class="mall"><summary>All your machines ('+c.lib.length+')</summary><div class="mgrid">'+c.lib.map(m=>'<button type="button" class="mtile" data-mach="'+m.id+'"><img src="'+m.img+'" alt="" loading="lazy"><span>'+esc(m.n)+'</span></button>').join("")+'</div></details>';
+  const open=S.wo||k;
+  h+='<div class="cweek">'+AWD.map(w=>{
+    const d=c.days[w[0]],isO=open===w[0],has=d&&d.ex.length;
+    return '<div class="cwd'+(w[0]===k?" on":"")+'"><button type="button" class="cwh" data-wday="'+w[0]+'" aria-expanded="'+isO+'"><b>'+w[1].slice(0,3)+'</b><span>'+(d?(d.parts.length?namesOf(d.parts):(d.cardio?esc(d.cardio):"Rest")):"Rest")+'</span>'+(d&&(has||d.note||(d.cardio&&d.parts.length))?'<i>'+(isO?"−":"+")+'</i>':"")+'</button>'+
+      (isO&&d&&(has||d.cardio||d.note)?'<div class="mlist">'+(d.cardio&&d.parts.length?'<p class="note" style="margin:0 0 6px"><b>Cardio:</b> '+esc(d.cardio)+'</p>':"")+(has?'<small class="tp-k">Machines · tap one for a bigger photo</small>':"")+d.ex.map(e=>mrow(e,w[0])).join("")+(d.note?'<p class="note" style="margin:6px 0 0">'+esc(d.note)+'</p>':"")+'</div>':"")+'</div>';
+  }).join("")+'</div>';
+  if(c.lib.length){
+    const gm=S.mb&&S.mb.indexOf("g|")===0?mOf(S.mb.slice(2)):null;
+    h+='<details class="mall"><summary>All your machines ('+c.lib.length+')</summary><div class="mgrid">'+c.lib.map(m=>'<button type="button" class="mtile" data-mach="g|'+m.id+'"><img src="'+m.img+'" alt="" loading="lazy"><span>'+esc(m.n)+'</span></button>').join("")+'</div>'+(gm?bigOf(gm,"g|"+gm.id):"")+'</details>';
+  }
   const todayParts=td?td.parts:[];
   if(todayParts.length)h+='<div class="btns"><button type="button" class="btn primary" data-trainpick="'+todayParts[0]+'">Start today\'s session</button></div>';
   return h+'</div>';
 }
+
 function adminCard(){
   if(!ASSIGN.admin)return "";
   const A=S.ad||(S.ad={email:"",plan:{note:"",steps:0,days:{}},msg:""});
@@ -1888,6 +1896,7 @@ sheet.addEventListener("click",e=>{
     renderAll();focusSheet();return;
   }
   if(t.hasAttribute("data-mach")){const id=a("data-mach");S.mb=S.mb===id?"":id;renderAll();return}
+  if(t.hasAttribute("data-wday")){const w=a("data-wday");S.wo=(S.wo||awdKey(todayS()))===w?"-":w;S.mb="";renderAll();return}
   if(t.hasAttribute("data-adpart")){
     const p=a("data-adpart").split("|"),A=S.ad;if(!A||!validPart(p[1]))return;
     const d=A.plan.days[p[0]]||(A.plan.days[p[0]]={parts:[],cardio:"",note:""}),i=d.parts.indexOf(p[1]);
