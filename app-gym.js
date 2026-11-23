@@ -690,7 +690,7 @@ function cleanAssign(raw){
   if(!raw||typeof raw!=="object")return null;
   const o={note:String(raw.note||"").slice(0,400),steps:Math.max(0,Math.min(200000,Math.round(+raw.steps)||0)),days:{},lib:[]};
   (Array.isArray(raw.lib)?raw.lib:[]).slice(0,30).forEach(m=>{
-    if(m&&/^[a-z0-9-]{2,30}$/.test(String(m.id))&&/^machines\/[a-z0-9-]{2,30}\.jpg$/.test(String(m.img||"")))o.lib.push({id:m.id,n:String(m.n||"").slice(0,40),img:m.img,how:String(m.how||"").slice(0,300)});
+    if(m&&/^[a-z0-9-]{2,30}$/.test(String(m.id))&&/^machines\/[a-z0-9-]{2,30}\.jpg$/.test(String(m.img||"")))o.lib.push({id:m.id,n:String(m.n||"").slice(0,40),img:m.img,how:String(m.how||"").slice(0,300),url:/^https:\/\/watsongym\.co\.uk\/[\w\-\/.%\u2044\u29f8]{3,200}$/.test(String(m.url||""))?String(m.url):"",part:validPart(m.part)?m.part:"",ex:String(m.ex||"").slice(0,60)});
   });
   AWD.forEach(w=>{
     const d=raw.days&&raw.days[w[0]];if(!d)return;
@@ -699,7 +699,15 @@ function cleanAssign(raw){
     (Array.isArray(d.ex)?d.ex:[]).slice(0,14).forEach(e=>{if(e&&o.lib.some(m=>m.id===e.id))c.ex.push({id:e.id,s:Math.max(0,Math.min(20,Math.round(+e.s)||0)),r:String(e.r||"").slice(0,12)})});
     if(c.parts.length||c.cardio||c.note||c.ex.length)o.days[w[0]]=c;
   });
-  return Object.keys(o.days).length||o.note||o.steps||o.lib.length?o:null;
+  o.sessions=[];
+  (Array.isArray(raw.sessions)?raw.sessions:[]).slice(0,12).forEach((x,i)=>{
+    if(!x)return;
+    const parts=(Array.isArray(x.parts)?x.parts:[]).filter(validPart);
+    const c={id:"s"+i,name:String(x.name||("Session "+(i+1))).slice(0,40),parts:PARTS.map(q=>q.key).filter(k=>parts.indexOf(k)>=0),cardio:String(x.cardio||"").slice(0,200),note:String(x.note||"").slice(0,300),ex:[]};
+    (Array.isArray(x.ex)?x.ex:[]).slice(0,14).forEach(e=>{if(e&&o.lib.some(m=>m.id===e.id))c.ex.push({id:e.id,s:Math.max(0,Math.min(20,Math.round(+e.s)||0)),r:String(e.r||"").slice(0,12)})});
+    if(c.ex.length||c.cardio||c.note)o.sessions.push(c);
+  });
+  return Object.keys(o.days).length||o.sessions.length||o.note||o.steps||o.lib.length?o:null;
 }
 async function loadAssign(){
   const sb=window.AETHER_SB;if(!sb||B.mode!=="cloud")return;
@@ -714,28 +722,26 @@ async function loadAssign(){
 }
 function assignCard(){
   const c=ASSIGN.plan;if(!c)return "";
-  const t=todayS(),k=awdKey(t),td=c.days[k];
-  const line=d=>(d.parts.length?namesOf(d.parts):"")+(d.cardio?(d.parts.length?" + ":"")+esc(d.cardio):"");
   const mOf=id=>c.lib.find(m=>m.id===id);
-  const bigOf=(m,key)=>'<div class="mbig"><img src="'+m.img+'" alt="'+esc(m.n)+' machine"><b>'+esc(m.n)+'</b>'+(m.how?'<p class="note" style="margin:4px 0 8px">'+esc(m.how)+'</p>':"")+'<button type="button" class="btn sm" data-mach="'+key+'">Close</button></div>';
+  const bigOf=(m,key)=>'<div class="mbig"><img src="'+m.img+'" alt="'+esc(m.n)+' machine"><b>'+esc(m.n)+'</b>'+(m.how?'<p class="note" style="margin:4px 0 8px">'+esc(m.how)+'</p>':"")+(m.url?'<a class="mlink" href="'+esc(m.url)+'" target="_blank" rel="noopener noreferrer">'+(/\.mp4$/.test(m.url)?"Watch how this machine works":"Machine details")+'</a>':"")+'<button type="button" class="btn sm" data-mach="'+key+'">Close</button></div>';
   const mrow=(e,dk)=>{const m=mOf(e.id);if(!m)return "";const key=dk+"|"+m.id,on=S.mb===key;
-    return '<div class="mwrap"><button type="button" class="mrow'+(on?" on":"")+'" data-mach="'+key+'" aria-expanded="'+on+'"><img src="'+m.img+'" alt="" loading="lazy"><span><b>'+esc(m.n)+'</b><small>'+(e.s?e.s+" sets":"")+(e.r?" × "+esc(e.r):"")+'</small></span><em>'+(on?"Close":"Tap to enlarge")+'</em></button>'+(on?bigOf(m,key):"")+'</div>'};
+    return '<div class="mwrap"><button type="button" class="mrow'+(on?" on":"")+'" data-mach="'+key+'" aria-expanded="'+on+'"><img src="'+m.img+'" alt="" loading="lazy"><span><b>'+esc(m.n)+'</b><small>'+(e.s?e.s+" sets":"")+(e.r?" × "+esc(e.r):"")+'</small></span><em>'+(on?"Close":"Tap to enlarge")+'</em></button>'+(m.url&&!on?'<a class="mlink sm" href="'+esc(m.url)+'" target="_blank" rel="noopener noreferrer">'+(/\.mp4$/.test(m.url)?"Watch how it works":"Machine details")+'</a>':"")+(on?bigOf(m,key):"")+'</div>'};
   let h='<div class="coachcard"><span class="tp-k">Your plan</span>';
   if(c.note)h+='<p class="note" style="margin:4px 0 8px">'+esc(c.note)+'</p>';
-  h+='<div class="ctoday"><small>Today · '+AWD.find(w=>w[0]===k)[1]+'</small><b>'+(td?(td.parts.length?namesOf(td.parts):(td.cardio?esc(td.cardio):"Rest day")):"Rest day")+'</b>'+(td&&td.note?'<small>'+esc(td.note)+'</small>':"")+'</div>';
   if(c.steps)h+='<small class="note">Step goal: '+nfmt(c.steps)+' a day</small>';
-  const open=S.wo||k;
-  h+='<div class="cweek">'+AWD.map(w=>{
-    const d=c.days[w[0]],isO=open===w[0],has=d&&d.ex.length;
-    return '<div class="cwd'+(w[0]===k?" on":"")+'"><button type="button" class="cwh" data-wday="'+w[0]+'" aria-expanded="'+isO+'"><b>'+w[1].slice(0,3)+'</b><span>'+(d?(d.parts.length?namesOf(d.parts):(d.cardio?esc(d.cardio):"Rest")):"Rest")+'</span>'+(d&&(has||d.note||(d.cardio&&d.parts.length))?'<i>'+(isO?"−":"+")+'</i>':"")+'</button>'+
-      (isO&&d&&(has||d.cardio||d.note)?'<div class="mlist">'+(d.cardio&&d.parts.length?'<p class="note" style="margin:0 0 6px"><b>Cardio:</b> '+esc(d.cardio)+'</p>':"")+(has?'<small class="tp-k">Machines · tap one for a bigger photo</small>':"")+d.ex.map(e=>mrow(e,w[0])).join("")+(d.note?'<p class="note" style="margin:6px 0 0">'+esc(d.note)+'</p>':"")+'</div>':"")+'</div>';
-  }).join("")+'</div>';
+  if(c.sessions&&c.sessions.length){
+    const open=S.wo===undefined?"s0":S.wo;
+    h+='<div class="cweek">'+c.sessions.map((x,i)=>{
+      const isO=open===x.id,has=x.ex.length;
+      return '<div class="cwd'+(isO?" on":"")+'"><button type="button" class="cwh" data-wday="'+x.id+'" aria-expanded="'+isO+'"><b>'+(i+1)+'</b><span>'+esc(x.name)+(has?' · '+has+' machines':"")+'</span><i>'+(isO?"−":"+")+'</i></button>'+
+        (isO?'<div class="mlist">'+(x.note?'<p class="note" style="margin:0 0 6px">'+esc(x.note)+'</p>':"")+(x.cardio?'<p class="note" style="margin:0 0 6px"><b>'+(has?"Cardio":"Today")+':</b> '+esc(x.cardio)+'</p>':"")+
+          (has?'<small class="tp-k">Machines · tap one for a bigger photo</small>'+x.ex.map(e=>mrow(e,x.id)).join("")+'<div class="btns"><button type="button" class="btn primary" data-asstart="'+i+'">Start this workout</button></div><p class="note" style="margin:6px 0 0">Adds all '+has+' exercises to Train for today so you can log each set.</p>':"")+'</div>':"")+'</div>';
+    }).join("")+'</div>';
+  }
   if(c.lib.length){
     const gm=S.mb&&S.mb.indexOf("g|")===0?mOf(S.mb.slice(2)):null;
     h+='<details class="mall"><summary>All your machines ('+c.lib.length+')</summary><div class="mgrid">'+c.lib.map(m=>'<button type="button" class="mtile" data-mach="g|'+m.id+'"><img src="'+m.img+'" alt="" loading="lazy"><span>'+esc(m.n)+'</span></button>').join("")+'</div>'+(gm?bigOf(gm,"g|"+gm.id):"")+'</details>';
   }
-  const todayParts=td?td.parts:[];
-  if(todayParts.length)h+='<div class="btns"><button type="button" class="btn primary" data-trainpick="'+todayParts[0]+'">Start today\'s session</button></div>';
   return h+'</div>';
 }
 
@@ -1896,7 +1902,23 @@ sheet.addEventListener("click",e=>{
     renderAll();focusSheet();return;
   }
   if(t.hasAttribute("data-mach")){const id=a("data-mach");S.mb=S.mb===id?"":id;renderAll();return}
-  if(t.hasAttribute("data-wday")){const w=a("data-wday");S.wo=(S.wo||awdKey(todayS()))===w?"-":w;S.mb="";renderAll();return}
+  if(t.hasAttribute("data-wday")){const w=a("data-wday"),cur=S.wo===undefined?"s0":S.wo;S.wo=cur===w?"-":w;S.mb="";renderAll();return}
+  if(t.hasAttribute("data-asstart")){
+    const c=ASSIGN.plan,x=c&&c.sessions&&c.sessions[parseInt(a("data-asstart"),10)];if(!x)return;
+    const d=todayS(),ids=[],parts=[];
+    x.ex.forEach(e=>{
+      const m=c.lib.find(q=>q.id===e.id);if(!m||!m.part)return;
+      const ex=exList(m.part).find(q=>q.n===m.ex);if(!ex)return;
+      if(ids.indexOf(ex.id)<0)ids.push(ex.id);if(parts.indexOf(m.part)<0)parts.push(m.part);
+    });
+    if(!ids.length)return;
+    const pk=PARTS.map(q=>q.key).filter(k=>parts.indexOf(k)>=0);
+    PLAN.day[d]=pk;PLAN.pick[d]=ids.slice(0,120);touch("plan","plan");
+    S.page="train";S.chosen=true;S.dateAuto=true;S.date=d;S.tab="log";S.pickKey=null;S.manage=false;S.addEx=false;S.dayAdd=false;S.msg="";S.ed=null;
+    syncWheel(pk[0]);
+    const first=ids.find(id=>!hasSetsOn(d,id))||ids[0];S.open=first;
+    renderAll();focusSheet();return;
+  }
   if(t.hasAttribute("data-adpart")){
     const p=a("data-adpart").split("|"),A=S.ad;if(!A||!validPart(p[1]))return;
     const d=A.plan.days[p[0]]||(A.plan.days[p[0]]={parts:[],cardio:"",note:""}),i=d.parts.indexOf(p[1]);

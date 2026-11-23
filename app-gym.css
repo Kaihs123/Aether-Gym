@@ -450,3 +450,5 @@ html,body,button,a,label,summary,input,select,textarea,.tab{touch-action:manipul
 .mrow em{margin-left:auto;font-style:normal;font-size:12px;opacity:.7;white-space:nowrap}
 .mrow span{flex:1}
 .mrow img{width:64px;height:84px}
+.mlink{display:inline-block;margin:2px 0 6px;color:var(--accent,#7c9cff);font-weight:650;text-decoration:underline}
+.mlink.sm{font-size:13px;margin:0 0 4px 74px}
