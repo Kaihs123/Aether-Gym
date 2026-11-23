@@ -332,7 +332,7 @@ async function connect(){
   }else{
     B.mode="local";B.assets=null;loadLocal();
   }
-  ver++;setStatus();renderAll();run();scheduleTour();
+  ver++;setStatus();renderAll();run();scheduleTour();loadAssign();
 }
 
 /* ---------- derived numbers ---------- */
@@ -681,6 +681,64 @@ function stepsCard(){
     '<div class="btns"><button type="button" class="btn primary" data-stsave="'+d+'">Save steps</button><button type="button" class="btn" data-stgoal>Change goal</button></div>'+
     '<p class="note" style="margin:8px 0 0">Look at the step count in your phone health app, then type it in here.</p></div>';
 }
+/* ---------- coach plan: a weekly plan an admin assigns to this account ---------- */
+const ASSIGN={plan:null,admin:false,loaded:false};
+const AWD=[["mon","Monday"],["tue","Tuesday"],["wed","Wednesday"],["thu","Thursday"],["fri","Friday"],["sat","Saturday"],["sun","Sunday"]];
+const awdKey=d=>["sun","mon","tue","wed","thu","fri","sat"][parse(d).getDay()];
+function cleanAssign(raw){
+  if(!raw||typeof raw!=="object")return null;
+  const o={note:String(raw.note||"").slice(0,400),steps:Math.max(0,Math.min(200000,Math.round(+raw.steps)||0)),days:{}};
+  AWD.forEach(w=>{
+    const d=raw.days&&raw.days[w[0]];if(!d)return;
+    const parts=(Array.isArray(d.parts)?d.parts:[]).filter(validPart);
+    const c={parts:PARTS.map(x=>x.key).filter(k=>parts.indexOf(k)>=0),cardio:String(d.cardio||"").slice(0,200),note:String(d.note||"").slice(0,300)};
+    if(c.parts.length||c.cardio||c.note)o.days[w[0]]=c;
+  });
+  return Object.keys(o.days).length||o.note||o.steps?o:null;
+}
+async function loadAssign(){
+  const sb=window.AETHER_SB;if(!sb||B.mode!=="cloud")return;
+  try{
+    const u=await sb.auth.getUser(),em=u&&u.data&&u.data.user&&u.data.user.email;if(!em)return;
+    const adm=await sb.from("gym_admins").select("email").limit(1);
+    ASSIGN.admin=!!(adm.data&&adm.data.length);
+    const r=await sb.from("gym_coach_plans").select("plan").eq("email",em.toLowerCase()).maybeSingle();
+    ASSIGN.plan=r.data?cleanAssign(r.data.plan):null;
+    ASSIGN.loaded=true;ver++;softRender();
+  }catch(e){}
+}
+function assignCard(){
+  const c=ASSIGN.plan;if(!c)return "";
+  const t=todayS(),k=awdKey(t),td=c.days[k];
+  const line=d=>(d.parts.length?namesOf(d.parts):"")+(d.cardio?(d.parts.length?" + ":"")+esc(d.cardio):"");
+  let h='<div class="coachcard"><span class="tp-k">Your plan</span>';
+  if(c.note)h+='<p class="note" style="margin:4px 0 8px">'+esc(c.note)+'</p>';
+  h+='<div class="ctoday"><small>Today · '+AWD.find(w=>w[0]===k)[1]+'</small><b>'+(td?(line(td)||"Rest"):"Rest day")+'</b>'+(td&&td.note?'<small>'+esc(td.note)+'</small>':"")+'</div>';
+  if(c.steps)h+='<small class="note">Step goal: '+nfmt(c.steps)+' a day</small>';
+  h+='<div class="cweek">'+AWD.map(w=>{const d=c.days[w[0]];return '<div class="'+(w[0]===k?"on":"")+'"><b>'+w[1].slice(0,3)+'</b><span>'+(d?(line(d)||"Rest"):"Rest")+'</span></div>'}).join("")+'</div>';
+  const todayParts=td?td.parts:[];
+  if(todayParts.length)h+='<div class="btns"><button type="button" class="btn primary" data-trainpick="'+todayParts[0]+'">Start today\'s session</button></div>';
+  return h+'</div>';
+}
+function adminCard(){
+  if(!ASSIGN.admin)return "";
+  const A=S.ad||(S.ad={email:"",plan:{note:"",steps:0,days:{}},msg:""});
+  let h='<div class="control"><div class="h"><label>Coach: assign a plan</label></div><p class="note" style="margin:0 0 10px">Only you can see this. Type the account email, load it, set the week, then save. They see it on their Overview.</p>'+
+    '<input type="email" class="adin" id="ad-email" data-adf="email" placeholder="their@email.com" autocomplete="off" value="'+esc(A.email)+'"><div class="btns" style="margin:8px 0"><button type="button" class="btn" data-adload>Load their plan</button></div>'+
+    '<label class="l" for="ad-note">Message for them</label><input type="text" class="adin" id="ad-note" data-adf="note" maxlength="400" placeholder="e.g. 8 week strength block" value="'+esc(A.plan.note)+'">'+
+    '<label class="l" for="ad-steps">Daily step goal</label><input type="number" class="adin" id="ad-steps" data-adf="steps" inputmode="numeric" placeholder="e.g. 10000" value="'+(A.plan.steps||"")+'">';
+  AWD.forEach(w=>{
+    const d=A.plan.days[w[0]]||{parts:[],cardio:"",note:""};
+    h+='<div class="adday"><b>'+w[1]+'</b><div class="chips">'+PARTS.map(p=>'<button type="button" data-adpart="'+w[0]+'|'+p.key+'" aria-pressed="'+(d.parts.indexOf(p.key)>=0)+'">'+p.label+'</button>').join("")+'</div>'+
+      '<input type="text" class="adin" data-adf="cardio|'+w[0]+'" maxlength="200" placeholder="Cardio, e.g. 30 min treadmill, 8 km/h, 3% incline" value="'+esc(d.cardio)+'">'+
+      '<input type="text" class="adin" data-adf="dnote|'+w[0]+'" maxlength="300" placeholder="Note for the day (optional)" value="'+esc(d.note)+'"></div>';
+  });
+  h+='<div class="btns"><button type="button" class="btn primary" data-adsave>Save plan</button><button type="button" class="btn" data-addel>Delete plan</button></div><p class="msg" role="status">'+esc(A.msg||"")+'</p></div>';
+  return h;
+}
+const adEmail=()=>((S.ad&&S.ad.email)||"").trim().toLowerCase();
+
+const softKeep=()=>renderAll();
 function viewCardio(){
   const t=todayS();
   if(!S.cm||!MACH.some(m=>m[0]===S.cm))S.cm="tread";
@@ -980,7 +1038,7 @@ function viewHome(){
       '<div class="bar2"><i style="width:'+share.toFixed(1)+'%"></i></div><div class="s">Last trained '+agoLong(st.last)+'</div></div>';
   }).join("");
   const recent=I.pbs.slice(0,5).map(e=>'<div class="line"><div class="h"><span>'+esc(e.n)+'<div class="s">'+dShort(e.date)+'</div></span><b>'+fset(e.set,e.bw)+'</b></div></div>').join("");
-  return head("Training overview","Last 30 days")+welcome()+homeTop(I,nx,np)+
+  return head("Training overview","Last 30 days")+welcome()+assignCard()+homeTop(I,nx,np)+
     '<div class="rows">'+rows+'</div>'+
     '<div class="eyebrow" style="margin:20px 0 10px">Weekly set goals</div>'+goalsBlock(I)+
     '<div class="eyebrow" style="margin:20px 0 10px">Recent personal bests</div>'+
@@ -1351,6 +1409,7 @@ function viewSettings(){
     '<div class="control" style="margin-top:0"><div class="h"><label>Weight unit</label></div>'+sw("unit",[["kg","Kilograms"],["lb","Pounds"]],unit)+'<p class="note" style="margin:-6px 0 0">Switching only changes how weights are shown. Nothing you logged is altered.</p></div>'+
     '<div class="control"><div class="h"><label>Rest timer</label></div>'+sw("rest",[["0","Off"],["60","60s"],["90","90s"],["120","2 min"],["180","3 min"]],String(PLAN.rest))+'<p class="note" style="margin:-6px 0 0">Starts after you log a set.</p></div>'+
     '<div class="control"><div class="h"><label>Weekly sets goal</label></div><p class="note" style="margin:-6px 0 12px">Fills the bar beside each body part. Set one for each.</p>'+goalsBlock(idx())+'</div>'+groupsBlock()+
+    adminCard()+
     '<div class="control"><div class="h"><label>Where your data lives</label></div><p class="note" style="margin:0">'+where+'</p></div>'+
     '<div class="control"><div class="h"><label>Backup</label></div><p class="note" style="margin:0 0 10px">Copy your workouts and exercise list as text you can keep. Photos are not included.</p>'+
     '<button type="button" class="btn" data-copy style="width:100%">'+(S.copied?"Copied":"Copy data as JSON")+'</button>'+
@@ -1589,7 +1648,14 @@ const sheet=$("sheet");
 function say(id,msg,err){S.msg=msg;S.msgErr=!!err;S.msgFor=id}
 function readNum(sel){const el=sheet.querySelector(sel);return el?parseFloat(el.value):NaN}
 
-sheet.addEventListener("input",e=>{const el=e.target;if(el&&el.hasAttribute&&el.hasAttribute("data-cf")){S.cf=S.cf||{};S.cf[el.getAttribute("data-cf")]=el.value}});
+sheet.addEventListener("input",e=>{const el=e.target;
+  if(el&&el.hasAttribute&&el.hasAttribute("data-adf")&&S.ad){
+    const f=el.getAttribute("data-adf").split("|"),A=S.ad,v=el.value;
+    if(f[0]==="email")A.email=v;else if(f[0]==="note")A.plan.note=v;else if(f[0]==="steps")A.plan.steps=Math.round(+v)||0;
+    else{const d=A.plan.days[f[1]]||(A.plan.days[f[1]]={parts:[],cardio:"",note:""});if(f[0]==="cardio")d.cardio=v;else d.note=v}
+    return;
+  }
+  if(el&&el.hasAttribute&&el.hasAttribute("data-cf")){S.cf=S.cf||{};S.cf[el.getAttribute("data-cf")]=el.value}});
 sheet.addEventListener("click",e=>{if(e.target.closest('[data-welcome="hide"]')){LS.set("aether-gym-welcome","1");renderAll()}});
 sheet.addEventListener("click",e=>{
   const t=e.target.closest("button");if(!t)return;
@@ -1807,6 +1873,36 @@ sheet.addEventListener("click",e=>{
     if(m==="cancel"&&!(SESS[d]&&Object.keys(SESS[d].ex).length)){delete PLAN.day[d];delete PLAN.pick[d];touch("plan","plan")}
     S.chosen=false;S.pickKey=null;S.open=null;S.ed=null;S.addEx=false;S.manage=false;S.dayAdd=false;S.msg="";
     renderAll();focusSheet();return;
+  }
+  if(t.hasAttribute("data-adpart")){
+    const p=a("data-adpart").split("|"),A=S.ad;if(!A||!validPart(p[1]))return;
+    const d=A.plan.days[p[0]]||(A.plan.days[p[0]]={parts:[],cardio:"",note:""}),i=d.parts.indexOf(p[1]);
+    if(i>=0)d.parts.splice(i,1);else d.parts.push(p[1]);
+    softKeep();return;
+  }
+  if(t.hasAttribute("data-adload")||t.hasAttribute("data-adsave")||t.hasAttribute("data-addel")){
+    const A=S.ad,em=adEmail(),sb=window.AETHER_SB;
+    if(!A||!sb||!ASSIGN.admin)return;
+    if(!/^\S+@\S+\.\S+$/.test(em)){A.msg="Enter a valid email.";renderAll();return}
+    const kind=t.hasAttribute("data-adload")?"load":t.hasAttribute("data-adsave")?"save":"del";
+    (async()=>{
+      try{
+        if(kind==="load"){
+          const r=await sb.from("gym_coach_plans").select("plan").eq("email",em).maybeSingle();if(r.error)throw r.error;
+          const c=r.data&&cleanAssign(r.data.plan);
+          A.plan=c||{note:"",steps:0,days:{}};A.msg=c?"Loaded.":"No plan yet for this account. Fill one in below.";
+        }else if(kind==="save"){
+          const c=cleanAssign(A.plan);if(!c){A.msg="Add at least one day, a note or a step goal.";renderAll();return}
+          const r=await sb.from("gym_coach_plans").upsert({email:em,plan:c,updated_at:new Date().toISOString()});if(r.error)throw r.error;
+          A.plan=c;A.msg="Saved. "+em+" will see it next time they open the app.";
+        }else{
+          if(!confirm("Delete the plan for "+em+"?"))return;
+          const r=await sb.from("gym_coach_plans").delete().eq("email",em);if(r.error)throw r.error;
+          A.plan={note:"",steps:0,days:{}};A.msg="Deleted.";
+        }
+      }catch(e){A.msg="Couldn't do that: "+((e&&e.message)||"error")}
+      renderAll();
+    })();return;
   }
   if(t.hasAttribute("data-sdate")){const d=S.sd||todayS(),n=addDays(d,parseInt(a("data-sdate"),10));S.sd=n>todayS()?todayS():n;renderAll();return}
   if(t.hasAttribute("data-stadd")){const el=sheet.querySelector("[data-stin]");if(!el)return;el.value=Math.max(0,(parseInt(el.value,10)||0)+parseInt(a("data-stadd"),10));return}

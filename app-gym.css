@@ -420,3 +420,11 @@
 .dchips{display:flex;flex-wrap:wrap;gap:6px}
 .dchips span{padding:5px 11px;border-radius:99px;background:rgba(255,255,255,.08);font-size:13px;font-weight:600}
 .dsec h4{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.6}
+.coachcard{margin:0 0 14px;padding:14px;border-radius:16px;border:1px solid var(--accent,#7c9cff);background:rgba(124,156,255,.08)}
+.ctoday{display:grid;gap:2px;margin:6px 0 10px}.ctoday b{font-size:18px}.ctoday small{opacity:.75}
+.cweek{display:grid;gap:4px;margin:10px 0}
+.cweek div{display:flex;gap:10px;padding:6px 8px;border-radius:8px;font-size:13px}
+.cweek div.on{background:rgba(255,255,255,.1)}
+.cweek b{width:34px;opacity:.7}.cweek span{flex:1}
+.adin{width:100%;box-sizing:border-box;margin:4px 0;padding:11px 12px;border-radius:10px;border:1px solid var(--line,rgba(255,255,255,.18));background:transparent;color:inherit;font:inherit}
+.adday{display:grid;gap:4px;margin:12px 0;padding-top:10px;border-top:1px solid var(--line,rgba(255,255,255,.1))}

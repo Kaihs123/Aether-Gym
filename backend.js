@@ -10,6 +10,7 @@ if(!configured||!window.supabase||!window.supabase.createClient)return;
 
 var T="gym_docs",BUCKET="gym-photos";
 var sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+window.AETHER_SB=sb;
 var user=null,ready=null,resolveReady=null,recovery=false;
 ready=new Promise(function(r){resolveReady=r});
 
