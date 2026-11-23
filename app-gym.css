@@ -438,3 +438,7 @@
 .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .mtile{display:grid;gap:4px;padding:0;border:0;background:none;color:inherit;font:inherit;font-size:12px;text-align:center;cursor:pointer}
 .mtile img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px}
+
+/* iPhone: text fields under 16px make Safari zoom in when focused; also stop double-tap zoom */
+input,select,textarea{font-size:16px!important}
+html,body,button,a,label,summary,input,select,textarea,.tab{touch-action:manipulation}
