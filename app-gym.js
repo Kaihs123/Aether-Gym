@@ -705,9 +705,10 @@ function cleanAssign(raw){
     const parts=(Array.isArray(x.parts)?x.parts:[]).filter(validPart);
     const c={id:"s"+i,name:String(x.name||("Session "+(i+1))).slice(0,40),parts:PARTS.map(q=>q.key).filter(k=>parts.indexOf(k)>=0),cardio:String(x.cardio||"").slice(0,200),note:String(x.note||"").slice(0,300),ex:[]};
     (Array.isArray(x.ex)?x.ex:[]).slice(0,14).forEach(e=>{if(e&&o.lib.some(m=>m.id===e.id))c.ex.push({id:e.id,s:Math.max(0,Math.min(20,Math.round(+e.s)||0)),r:String(e.r||"").slice(0,12)})});
-    if(c.ex.length||c.cardio||c.note)o.sessions.push(c);
+    if(c.ex.length||c.cardio||c.note||c.parts.length)o.sessions.push(c);
   });
-  return Object.keys(o.days).length||o.sessions.length||o.note||o.steps||o.lib.length?o:null;
+  const fl=raw.flags||{};o.flags={hideProgress:!!fl.hideProgress,plan:!!fl.plan,split:String(fl.split||"").slice(0,40)};
+  return Object.keys(o.days).length||o.sessions.length||o.note||o.steps||o.lib.length||o.flags.hideProgress||o.flags.plan?o:null;
 }
 async function loadAssign(){
   const sb=window.AETHER_SB;if(!sb||B.mode!=="cloud")return;
@@ -720,6 +721,7 @@ async function loadAssign(){
     ASSIGN.loaded=true;ver++;softRender();
   }catch(e){}
 }
+const AF=()=>(ASSIGN.plan&&ASSIGN.plan.flags)||{};
 function assignCard(){
   const c=ASSIGN.plan;if(!c)return "";
   const mOf=id=>c.lib.find(m=>m.id===id);
@@ -733,9 +735,9 @@ function assignCard(){
     const open=S.wo===undefined?"s0":S.wo;
     h+='<div class="cweek">'+c.sessions.map((x,i)=>{
       const isO=open===x.id,has=x.ex.length;
-      return '<div class="cwd'+(isO?" on":"")+'"><button type="button" class="cwh" data-wday="'+x.id+'" aria-expanded="'+isO+'"><b>'+(i+1)+'</b><span>'+esc(x.name)+(has?' · '+has+' machines':"")+'</span><i>'+(isO?"−":"+")+'</i></button>'+
-        (isO?'<div class="mlist">'+(x.note?'<p class="note" style="margin:0 0 6px">'+esc(x.note)+'</p>':"")+(x.cardio?'<p class="note" style="margin:0 0 6px"><b>'+(has?"Cardio":"Today")+':</b> '+esc(x.cardio)+'</p>':"")+
-          (has?'<small class="tp-k">Machines · tap one for a bigger photo</small>'+x.ex.map(e=>mrow(e,x.id)).join("")+'<div class="btns"><button type="button" class="btn primary" data-asstart="'+i+'">Start this workout</button></div><p class="note" style="margin:6px 0 0">Adds all '+has+' exercises to Train for today so you can log each set.</p>':"")+'</div>':"")+'</div>';
+      return '<div class="cwd'+(isO?" on":"")+'"><button type="button" class="cwh" data-wday="'+x.id+'" aria-expanded="'+isO+'"><b>'+(i+1)+'</b><span>'+esc(x.name)+(has?' · '+has+' machines':(x.parts.length?' · '+namesOf(x.parts):""))+'</span><i>'+(isO?"−":"+")+'</i></button>'+
+        (isO?'<div class="mlist">'+(!has&&x.parts.length?'<p class="note" style="margin:0 0 6px"><b>Trains:</b> '+namesOf(x.parts)+'</p>':'')+(x.note?'<p class="note" style="margin:0 0 6px">'+esc(x.note)+'</p>':"")+(x.cardio?'<p class="note" style="margin:0 0 6px"><b>'+(has?"Cardio":"Today")+':</b> '+esc(x.cardio)+'</p>':"")+
+          (has?'<small class="tp-k">Machines · tap one for a bigger photo</small>'+x.ex.map(e=>mrow(e,x.id)).join("")+'<div class="btns"><button type="button" class="btn primary" data-asstart="'+i+'">Start this workout</button></div><p class="note" style="margin:6px 0 0">Adds all '+has+' exercises to Train for today so you can log each set.</p>':(x.parts.length?'<div class="btns"><button type="button" class="btn" data-planday="'+todayS()+'">Plan it in the calendar</button></div>':""))+'</div>':"")+'</div>';
     }).join("")+'</div>';
   }
   if(c.lib.length){
@@ -1014,6 +1016,12 @@ function homeTop(I,nx,np){
       h='<div class="hero"><span>Planned today</span><strong>'+names+'</strong><small>'+(todo.length===tp.length?"Not started yet.":"Still to do: "+todo.map(k=>partOf(k).label).join(", ")+".")+'</small></div>'+
         '<button type="button" class="btn primary" data-go="'+f.key+'" style="width:100%;margin:-4px 0 18px">Train '+f.label.toLowerCase()+'</button>';
     }else h='<div class="hero"><span>Planned today</span><strong>'+names+'</strong><small>All done. Nice work.</small></div>';
+  }else if(AF().plan&&Object.keys(PLAN.sched).some(d=>d>t&&PLAN.sched[d].length)){
+    const nd=Object.keys(PLAN.sched).filter(d=>d>t&&PLAN.sched[d].length).sort()[0],ks=PLAN.sched[nd],exn=[].concat.apply([],ks.map(k=>sessionEx(partOf(k),nd))).map(e=>e.n);
+    h='<div class="hero"><span>Next up · '+dShort(nd)+'</span><strong>'+namesOf(ks)+'</strong><small>'+(exn.length?esc(exn.slice(0,6).join(", "))+(exn.length>6?" +"+(exn.length-6)+" more":""):"No exercises chosen yet.")+'</small></div>'+
+      '<button type="button" class="btn primary" data-planday="'+nd+'" style="width:100%;margin:-4px 0 18px">'+(exn.length?"View plan":"Choose exercises")+'</button>';
+  }else if(AF().plan){
+    h='';
   }else{
     const gp=groupOf(nx.key);
     h='<div class="hero"><span>Next up</span><strong>'+namesOf(gp)+'</strong><small>'+(nx.last?(gp.length>1?np.label+" last trained ":"Last trained ")+agoLong(nx.last)+".":"You haven't trained "+(gp.length>1?np.label.toLowerCase()+" ":"this ")+"yet.")+'</small></div>'+
@@ -1064,12 +1072,13 @@ function viewHome(){
       '<div class="bar2"><i style="width:'+share.toFixed(1)+'%"></i></div><div class="s">Last trained '+agoLong(st.last)+'</div></div>';
   }).join("");
   const recent=I.pbs.slice(0,5).map(e=>'<div class="line"><div class="h"><span>'+esc(e.n)+'<div class="s">'+dShort(e.date)+'</div></span><b>'+fset(e.set,e.bw)+'</b></div></div>').join("");
-  return head("Training overview","Last 30 days")+welcome()+assignCard()+homeTop(I,nx,np)+
-    '<div class="rows">'+rows+'</div>'+
-    '<div class="eyebrow" style="margin:20px 0 10px">Weekly set goals</div>'+goalsBlock(I)+
+  const hp=!!AF().hideProgress;
+  return head("Training overview",hp?"Your split":"Last 30 days")+welcome()+assignCard()+homeTop(I,nx,np)+
+    (hp?'':'<div class="rows">'+rows+'</div>'+
+    '<div class="eyebrow" style="margin:20px 0 10px">Weekly set goals</div>'+goalsBlock(I))+
     '<div class="eyebrow" style="margin:20px 0 10px">Recent personal bests</div>'+
     (recent?'<div class="rows">'+recent+'</div>':'<p class="note" style="margin-top:0">No personal bests yet. Beat the top set of an earlier session and it shows up here.</p>')+
-    '<p class="foot">Share is each body part\'s portion of your sets over the last 30 days. Volume is weight × reps.</p>';
+    (hp?'':'<p class="foot">Share is each body part\'s portion of your sets over the last 30 days. Volume is weight × reps.</p>');
 }
 
 function dayBar(P,d){
@@ -1102,15 +1111,15 @@ function trainPicker(){
   let h=head("Train","What are you training?")+'<p class="note intro">Pick the body part you want to work today. Next you will choose your exercises, then log your sets.</p>';
   const tds=daySummary(t);if(tds)h+='<h3>Today so far</h3>'+tds;
   if(todayParts.length)h+='<div class="tp-cont"><div><b>Today so far: '+todayParts.map(x=>x.p.label).join(" + ")+'</b><small>Pick up where you left off, or choose something else below.</small></div><button type="button" class="btn" data-trainpick="'+todayParts[0].p.key+'">Continue</button></div>';
-  if(top){
+  if(top&&!AF().hideProgress){
     const why=x=>x.wk+' of '+x.g+' sets this week'+(x.behind?' · '+x.behind+' behind':'')+' · last trained '+agoLong(x.last);
     h+='<div class="tp-rec"><span class="tp-k">Recommended</span><b>'+top.p.label+(second&&second.score>=top.score-2?' <span class="tp-or">or '+second.p.label+'</span>':'')+'</b><small>'+why(top)+(top.planned?' · planned for today':'')+'</small>'+
       '<div class="btns"><button type="button" class="btn primary" data-trainpick="'+top.p.key+'">Train '+top.p.label.toLowerCase()+'</button>'+(second&&second.score>=top.score-2?'<button type="button" class="btn" data-trainpick="'+second.p.key+'">Train '+second.p.label.toLowerCase()+'</button>':'')+'</div></div>';
   }
   h+='<h3>Or pick a body part</h3><div class="tp-grid">'+R.map(x=>{
     const st=x.today?'<span class="tp-tag on">Today</span>':x.planned?'<span class="tp-tag">Planned</span>':x.behind>=Math.max(2,x.g*.3)?'<span class="tp-tag bad">Behind</span>':x.pct>=1?'<span class="tp-tag ok">Goal met</span>':'';
-    return '<button type="button" class="tp-part'+(top&&x.p.key===top.p.key?' rec':'')+'" data-trainpick="'+x.p.key+'"><span class="tp-h"><b>'+x.p.label+'</b>'+st+'</span><span class="tp-bar" aria-hidden="true"><i style="width:'+Math.min(100,Math.round(x.pct*100))+'%"></i></span><small>'+x.wk+'/'+x.g+' sets this week · '+agoLong(x.last)+'</small></button>';
-  }).join("")+'</div><p class="note">Recommendations weigh how far each part is behind its weekly set goal, how long since you last trained it, and anything you planned for today. You can add more parts once you start.</p>';
+    return '<button type="button" class="tp-part'+(top&&x.p.key===top.p.key?' rec':'')+'" data-trainpick="'+x.p.key+'"><span class="tp-h"><b>'+x.p.label+'</b>'+st+'</span>'+(AF().hideProgress?'':'<span class="tp-bar" aria-hidden="true"><i style="width:'+Math.min(100,Math.round(x.pct*100))+'%"></i></span><small>'+x.wk+'/'+x.g+' sets this week · '+agoLong(x.last)+'</small>')+'</button>';
+  }).join("")+'</div>'+(AF().hideProgress?'':'<p class="note">Recommendations weigh how far each part is behind its weekly set goal, how long since you last trained it, and anything you planned for today. You can add more parts once you start.</p>');
   return h;
 }
 function viewTrain(){
@@ -1394,6 +1403,7 @@ function viewCal(){
     panel='<div class="eyebrow" style="margin:18px 0 8px">Plan '+(sel===t?"today":dShort(sel))+'</div>'+
       (PLAN.groups.some(g=>g.length>1)?'<div class="chips" style="margin:0 0 8px" role="group" aria-label="Plan a whole training day">'+PLAN.groups.filter(g=>g.length>1).map(g=>'<button type="button" data-plangrp="'+g.join(",")+'" aria-pressed="'+(pls.length===g.length&&g.every(k=>pls.indexOf(k)>=0))+'">'+namesOf(g)+'</button>').join("")+'</div>':"")+
       '<div class="chips" style="margin:0 0 10px" role="group" aria-label="Body parts planned for '+dShort(sel)+'">'+PARTS.map(p=>'<button type="button" data-plan="'+p.key+'" aria-pressed="'+(pls.indexOf(p.key)>=0)+'">'+p.label+'</button>').join("")+'</div>'+
+      (pls.length?'<div class="eyebrow" style="margin:12px 0 6px">Exercises</div><div class="rows" style="margin-bottom:10px">'+pls.map(k=>{const L=sessionEx(partOf(k),sel);return '<button type="button" class="line" data-planex="'+k+'"><div class="h"><span>'+partOf(k).label+'</span><b>'+(L.length?L.length+(L.length===1?" exercise":" exercises"):"Choose")+'</b></div>'+(L.length?'<div class="s">'+esc(L.map(e=>e.n).join(", "))+'</div>':'')+'</button>'}).join("")+'</div>':'')+
       (pls.length?'<div class="btns"><button type="button" class="btn" data-planrep>Repeat for 4 weeks</button><button type="button" class="btn" data-planclear>Clear plan</button></div>':'<p class="note" style="margin:0">Tap the body parts you plan to train.</p>')+
       '<p class="msg" role="status">'+(S.msgFor==="plan"?esc(S.msg):"")+'</p>';
   }
@@ -1462,6 +1472,7 @@ function renderLb(){
 /* ---------- render ---------- */
 function updateChrome(){
   const I=idx(),t=todayS(),ws=wkStart(t);
+  {const g=document.getElementById("app-gym");if(g)g.classList.toggle("hp",!!AF().hideProgress)}
   const wk=I.dates.filter(d=>d>=ws&&d<=t);
   let wsets=0,wvol=0;wk.forEach(d=>{wsets+=I.byDate[d].sets;wvol+=I.byDate[d].vol});
   $("eyebrow").textContent="This week";
@@ -1812,6 +1823,7 @@ sheet.addEventListener("click",e=>{
   if(t.hasAttribute("data-pickgo")){
     const P=partOf(S.part),d=S.date;
     S.pickKey=null;S.manage=false;
+    if(d>todayS()&&sessionEx(P,d).length){S.page="cal";S.calSel=d;S.calMonth=d.slice(0,8)+"01";S.chosen=false;renderAll();focusSheet();return}
     const list=sessionEx(P,d);
     if(!list.length){S.pickKey=pickKeyOf(P.key,d);renderAll();return}
     const all=[].concat.apply([],dayParts(d,P.key).map(k=>sessionEx(partOf(k),d)));
@@ -1845,6 +1857,7 @@ sheet.addEventListener("click",e=>{
     S.calMonth=nm;renderAll();return;
   }
   if(t.hasAttribute("data-day")){S.calSel=a("data-day");S.msg="";renderAll();return}
+  if(t.hasAttribute("data-planex")){const k=a("data-planex"),d=S.calSel;if(!validPart(k))return;syncWheel(k);S.page="train";S.chosen=true;S.date=d;S.dateAuto=d===todayS();S.tab="log";S.pickKey=pickKeyOf(k,d);S.manage=false;S.addEx=false;S.open=null;S.ed=null;S.msg="";renderAll();focusSheet();return}
   if(t.hasAttribute("data-planday")){const d=a("data-planday");S.page="cal";S.calSel=d;S.calMonth=d.slice(0,8)+"01";S.ed=null;S.msg="";renderAll();focusSheet();return}
   if(t.hasAttribute("data-plan")){
     const k=a("data-plan"),d=S.calSel;if(d<todayS())return;

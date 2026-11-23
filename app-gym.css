@@ -452,3 +452,5 @@ html,body,button,a,label,summary,input,select,textarea,.tab{touch-action:manipul
 .mrow img{width:64px;height:84px}
 .mlink{display:inline-block;margin:2px 0 6px;color:var(--accent,#7c9cff);font-weight:650;text-decoration:underline}
 .mlink.sm{font-size:13px;margin:0 0 4px 74px}
+/* accounts with hidden progress: no 0-10 body part wheel */
+.app-gym.hp .stage-head,.app-gym.hp .stage{display:none!important}
