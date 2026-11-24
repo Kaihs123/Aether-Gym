@@ -849,6 +849,7 @@ ORBS.forEach(o=>{
 const NAVS=[
   ["home","Home",'<path d="M3 10.5 12 3l9 7.5M5.5 9.5V21h13V9.5M9 21v-7h6v7"/>'],
   ["workout","Workout",'<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>'],
+  ["cal","Calendar",'<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'],
   ["profile","Profile",'<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4 3.8-6 7.5-6s6.700 2 7.500 6"/>']
 ];
 $("tabs").innerHTML=NAVS.map(d=>'<button type="button" class="tab" data-nav="'+d[0]+'"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+d[2]+'</svg>'+d[1]+'</button>').join("");
@@ -1068,7 +1069,7 @@ function wBegin(){if(!wStart())LS.set(WS_KEY,JSON.stringify({d:todayS(),t:Date.n
 function wEnd(){LS.set(WS_KEY,"")}
 function durText(){const s=wStart();if(!s)return "0:00";const x=Math.max(0,Math.floor((Date.now()-s)/1000)),h=Math.floor(x/3600),m=Math.floor(x%3600/60),q=x%60;return h?h+":"+pad(m)+":"+pad(q):m+":"+pad(q)}
 setInterval(()=>{const el=sheet.querySelector("[data-wdur]");if(el)el.textContent=durText();const m=sheet.querySelector("[data-mdur]");if(m)m.textContent=durText()},1000);
-const navOf=p=>p==="home"?"home":(p==="workout"||p==="train"||p==="cardio")?"workout":"profile";
+const navOf=p=>p==="home"?"home":(p==="workout"||p==="train"||p==="cardio")?"workout":p==="cal"?"cal":"profile";
 const CHEVD='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const CHEVL='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function miniBar(){
@@ -1144,7 +1145,7 @@ function viewProfile(){
     '<button type="button" class="dtile wide" data-navgo="settings">Settings and account</button>';
 }
 function backBar(){
-  const to={stats:"profile",cal:"profile",photos:"profile",settings:"profile",cardio:"workout"}[S.page];
+  const to={stats:"profile",photos:"profile",settings:"profile",cardio:"workout"}[S.page];
   if(!to)return "";
   return '<button type="button" class="backbar" data-navgo="'+to+'">'+CHEVL+(to==="profile"?"Profile":"Workout")+'</button>';
 }
