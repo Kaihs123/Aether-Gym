@@ -595,3 +595,28 @@ html,body,button,a,label,summary,input,select,textarea,.tab{touch-action:manipul
 .app-gym .mgrid span{display:grid;place-items:center;height:36px;border-radius:9px;background:var(--card);color:var(--muted);font-size:13px}
 .app-gym .mgrid .on{background:var(--tint);color:#fff;font-weight:700}
 .app-gym .mgrid .cd{background:var(--tint-soft);color:var(--tint-ink)}
+/* cardio page + train picker polish */
+.app-gym .sgrid.three{grid-template-columns:repeat(3,1fr);gap:8px}
+.app-gym .sgrid.three .scard{padding:12px 10px}.app-gym .sgrid.three .scard b{font-size:17px}
+.app-gym .cmach{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+.app-gym .cmach button{min-height:52px;padding:6px 8px;border:1.5px solid transparent;border-radius:12px;background:var(--card);color:var(--ink);font:600 14px/1.2 var(--body);text-align:center;white-space:normal}
+.app-gym .cmach button[aria-pressed="true"]{border-color:var(--tint);background:var(--tint-soft);color:var(--tint-ink)}
+.app-gym .addcard{margin:0 0 14px;padding:16px;border:0;border-radius:14px;background:var(--card)}
+.app-gym .addcard .ctitle{display:block;font:650 18px var(--display);margin-bottom:2px}
+.app-gym .cform .erow,.app-gym .stepcard .erow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.app-gym .cform .erow label,.app-gym .stepcard .erow label{flex:1;font:600 15px var(--body)}
+.app-gym .cform .step,.app-gym .stepcard .step{display:flex;align-items:center;gap:6px}
+.app-gym .cform .step button,.app-gym .stepcard .step button{width:42px;height:42px;border:0;border-radius:10px;background:var(--sub);color:var(--ink);font:600 20px var(--body);padding:0}
+.app-gym .cform .step input,.app-gym .stepcard .step input{width:84px;height:42px;border:1.5px solid var(--line-2);border-radius:10px;background:var(--bg);color:var(--ink);text-align:center;font:600 17px var(--body)}
+.app-gym .addcard .btns{display:flex;gap:8px;margin-top:12px}.app-gym .addcard .btns .btn{flex:1}
+.app-gym .stbar{height:8px;border-radius:6px;background:var(--line-2);overflow:hidden;margin:10px 0 4px}.app-gym .stbar i{display:block;height:100%;background:var(--tint)}
+.app-gym .clist .crow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin-bottom:8px;border-radius:12px;background:var(--card)}
+.app-gym .clist .crow b{display:block;font:600 15px var(--body)}.app-gym .clist .crow small{color:var(--muted)}
+.app-gym .cardio-h3,.app-gym .sheet h3{margin:18px 0 8px;font:650 13px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.app-gym .tp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.app-gym .tp-part{display:flex;align-items:center;min-height:62px;padding:0 16px;border:0;border-radius:14px;background:var(--card);color:var(--ink);text-align:left}
+.app-gym .tp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+.app-gym .tp-h b{font:650 16px var(--body)}
+.app-gym .tp-tag{padding:3px 8px;border-radius:999px;background:var(--tint-soft);color:var(--tint-ink);font:600 11px var(--body)}
+.app-gym .tabs .tab{font-size:11px}
+.app-gym .tp-part{flex-direction:row!important;height:62px!important;align-items:center!important;justify-content:flex-start!important}

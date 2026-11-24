@@ -572,7 +572,7 @@ const goalOf=k=>PLAN.goals[k]||PLAN.goal;
 function groupOf(k){const g=PLAN.groups.find(x=>x.indexOf(k)>=0);return g?g.slice():[k]}
 /* A session holds just the part you picked, plus any you add for that day (removable again). Pairings are only used for planning ahead. */
 function dayParts(d,k){
-  const ex=PLAN.day[d],out=ex&&ex.indexOf(k)>=0?ex.slice():[k];
+  const ex=(PLAN.day[d]||[]).concat(d>=todayS()?(PLAN.sched[d]||[]):[]),out=ex.indexOf(k)>=0?ex.slice():[k];
   if(out.indexOf(k)<0)out.push(k);
   return PARTS.map(p=>p.key).filter(x=>out.indexOf(x)>=0);
 }
@@ -772,8 +772,8 @@ function viewCardio(){
   if(!S.cm||!MACH.some(m=>m[0]===S.cm))S.cm="tread";
   if(!S.cf||S.cfm!==S.cm){S.cf=cardioPrefill(S.cm);S.cfm=S.cm}
   const cdt=cardDate(),isT=cdt===t,m=machOf(S.cm),wk=cardioWeek(),today=CARDIO[cdt]||[];
-  let h=head("Cardio","Log cardio")+'<p class="note intro">Pick your machine, set the numbers, then tap Add cardio.</p>';
-  h+='<div class="cwk"><div><b>'+wk.mins+'</b><small>min this week</small></div><div><b>'+wk.days+'</b><small>'+(wk.days===1?"day":"days")+'</small></div><div><b>'+wk.dist+'</b><small>'+distU()+' (distance machines)</small></div></div>';
+  let h='<div class="ptitle"><h1>Cardio</h1></div>';
+  h+='<div class="sgrid three"><div class="scard"><small>This week</small><b>'+wk.mins+' min</b></div><div class="scard"><small>Days</small><b>'+wk.days+'</b></div><div class="scard"><small>Distance</small><b>'+wk.dist+' '+distU()+'</b></div></div>';
   h+='<div class="datebar"><button type="button" data-sdate="-1" aria-label="Previous day">‹</button><div><b>'+(isT?"Today":dShort(cdt))+'</b><small>'+(isT?dShort(cdt):agoLong(cdt)+" · adding to this day")+'</small></div><button type="button" data-sdate="1" aria-label="Next day"'+(isT?" disabled":"")+'>›</button></div>';
   h+=stepsCard();
   h+='<h3>Machine</h3><div class="cmach" role="group" aria-label="Cardio machine">'+MACH.map(x=>'<button type="button" data-cmach="'+x[0]+'" aria-pressed="'+(x[0]===S.cm)+'">'+x[1]+'</button>').join("")+'</div>';
@@ -849,6 +849,7 @@ ORBS.forEach(o=>{
 const NAVS=[
   ["home","Home",'<path d="M3 10.5 12 3l9 7.5M5.5 9.5V21h13V9.5M9 21v-7h6v7"/>'],
   ["workout","Workout",'<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>'],
+  ["cardio","Cardio",'<path d="M3 12h4l2.500-6 4 12 2.500-6h5"/>'],
   ["cal","Calendar",'<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>'],
   ["profile","Profile",'<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4 3.8-6 7.5-6s6.700 2 7.500 6"/>']
 ];
@@ -923,8 +924,8 @@ function focusSheet(){
 }
 function pick(i){S.chosen=true;if(i===front){S.page="train";S.msg="";renderAll();focusSheet()}else lock(i)}
 function pickPart(key){
-  S.chosen=true;const i=ORBS.findIndex(o=>o.key===key);
-  if(front===i){S.page="train";renderAll();focusSheet()}else{lock(i);setTimeout(focusSheet,60)}
+  S.chosen=true;S.dateAuto=true;S.date=todayS();S.tab="log";S.pickKey=null;S.lib=false;S.addEx=false;S.dayAdd=false;S.ed=null;S.open=null;S.msg="";wBegin();
+  if(validPart(key))syncWheel(key);S.page="train";renderAll();focusSheet();
 }
 
 stage.addEventListener("pointerdown",e=>{
@@ -1012,7 +1013,7 @@ function homeTop(I,nx,np){
     if(todo.length){
       const f=partOf(todo[0]);
       h='<div class="hero"><span>Planned today</span><strong>'+names+'</strong><small>'+(todo.length===tp.length?"Not started yet.":"Still to do: "+todo.map(k=>partOf(k).label).join(", ")+".")+'</small></div>'+
-        '<button type="button" class="btn primary" data-go="'+f.key+'" style="width:100%;margin:-4px 0 18px">Train '+f.label.toLowerCase()+'</button>';
+        '<button type="button" class="btn primary" data-go="'+f.key+'" style="width:100%;margin:-4px 0 18px">Start today\'s workout</button>';
     }else h='<div class="hero"><span>Planned today</span><strong>'+names+'</strong><small>All done. Nice work.</small></div>';
   }else if(Object.keys(PLAN.sched).some(d=>d>t&&PLAN.sched[d].length)){
     const nd=Object.keys(PLAN.sched).filter(d=>d>t&&PLAN.sched[d].length).sort()[0],ks=PLAN.sched[nd],exn=[].concat.apply([],ks.map(k=>sessionEx(partOf(k),nd))).map(e=>e.n);
@@ -1069,7 +1070,7 @@ function wBegin(){if(!wStart())LS.set(WS_KEY,JSON.stringify({d:todayS(),t:Date.n
 function wEnd(){LS.set(WS_KEY,"")}
 function durText(){const s=wStart();if(!s)return "0:00";const x=Math.max(0,Math.floor((Date.now()-s)/1000)),h=Math.floor(x/3600),m=Math.floor(x%3600/60),q=x%60;return h?h+":"+pad(m)+":"+pad(q):m+":"+pad(q)}
 setInterval(()=>{const el=sheet.querySelector("[data-wdur]");if(el)el.textContent=durText();const m=sheet.querySelector("[data-mdur]");if(m)m.textContent=durText()},1000);
-const navOf=p=>p==="home"?"home":(p==="workout"||p==="train"||p==="cardio")?"workout":p==="cal"?"cal":"profile";
+const navOf=p=>p==="home"?"home":(p==="workout"||p==="train")?"workout":p==="cardio"?"cardio":p==="cal"?"cal":"profile";
 const CHEVD='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const CHEVL='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function miniBar(){
@@ -1190,7 +1191,7 @@ function statsPB(){
   }).join("");
   const recent=I.pbs.slice(0,8).map(e=>'<div class="line"><div class="h"><span>'+esc(e.n)+'<div class="s">'+dShort(e.date)+'</div></span><b>'+fset(e.set,e.bw)+'</b></div></div>').join("");
   return '<div class="ptitle"><h1>Personal bests</h1></div>'+
-    (hp?'':'<div class="eyebrow" style="margin:0 0 10px">Last 30 days</div><div class="rows">'+rows+'</div><div class="eyebrow" style="margin:20px 0 10px">Weekly set goals</div>'+goalsBlock(I))+
+    (hp?'':'<div class="eyebrow" style="margin:0 0 10px">Last 30 days</div><div class="rows">'+rows+'</div>')+
     '<div class="eyebrow" style="margin:20px 0 10px">Personal bests</div>'+(recent?'<div class="rows">'+recent+'</div>':'<p class="note" style="margin-top:0">No personal bests yet. Beat the top set of an earlier session and it shows up here.</p>')+
     (hp?'':'<p class="foot">Share is each body part\'s portion of your sets over the last 30 days. Volume is weight × reps.</p>');
 }
@@ -1213,7 +1214,7 @@ function viewWorkout(){
         '<button type="button" class="btn primary" '+(x.ex.length?'data-asstart="'+i+'"':'data-rstart="'+i+'"')+'>Start Routine</button></div>';
     }).join("");
   }else h+='<p class="note">No routines yet. Tap Start Empty Workout, or plan days in Calendar.</p>';
-  h+='<div class="eyebrow" style="margin:22px 0 10px">More</div><div class="rows"><button type="button" class="line" data-navgo="train"><div class="h"><span>Train by body part</span><b>›</b></div></button><button type="button" class="line" data-navgo="cardio"><div class="h"><span>Cardio, swimming and steps</span><b>›</b></div></button><button type="button" class="line" data-navgo="cal"><div class="h"><span>Plan ahead in Calendar</span><b>›</b></div></button></div>';
+  h+='<div class="eyebrow" style="margin:22px 0 10px">More</div><div class="rows"><button type="button" class="line" data-navgo="train"><div class="h"><span>Train by body part</span><b>›</b></div></button><button type="button" class="line" data-navgo="cal"><div class="h"><span>Plan ahead in Calendar</span><b>›</b></div></button></div>';
   return h;
 }
 function viewProfile(){
@@ -1231,7 +1232,7 @@ function viewProfile(){
 }
 function backBar(){
   if(S.page==="stats"&&S.st)return '<button type="button" class="backbar" data-navgo="stats">'+CHEVL+'Statistics</button>';
-  const to={stats:"profile",photos:"profile",settings:"profile",cardio:"workout"}[S.page];
+  const to={stats:"profile",photos:"profile",settings:"profile"}[S.page];
   if(!to)return "";
   return '<button type="button" class="backbar" data-navgo="'+to+'">'+CHEVL+(to==="profile"?"Profile":"Workout")+'</button>';
 }
@@ -1259,6 +1260,7 @@ function logScreen(P,d,I){
   if(S.undo&&S.undo.d===d)h+='<div class="unpicked" role="status"><span>Removed <b>'+esc(S.undo.n)+'</b> from this session</span><button type="button" data-undopick>Undo</button></div>';
   const list=[].concat.apply([],dps.map(k=>sessionEx(partOf(k),d)));
   h+=list.map(ex=>exCard(ex,d,I)).join("");
+  dps.filter(k=>!sessionEx(partOf(k),d).length).forEach(k=>{h+='<button type="button" class="addset big" data-pickopen="'+k+'">+ Choose '+partOf(k).label.toLowerCase()+' exercises</button>'});
   if(S.addEx)h+=newExForm();
   h+='<button type="button" class="addset big" data-libopen>+ Add Exercise</button>'+(S.addEx?'':'<button type="button" class="addset" data-addex="open">+ New custom exercise</button>');
   if(!anySets)h+='<button type="button" class="cancelw" data-trainexit="discard">Cancel Workout</button>';
@@ -1289,29 +1291,25 @@ function trainNeeds(){
   });
 }
 function trainPicker(){
-  const R=trainNeeds(),t=todayS(),todayParts=R.filter(x=>x.today);
-  const rec=R.filter(x=>!x.today).slice().sort((a,b)=>b.score-a.score);
-  const top=rec[0],second=rec[1];
-  let h=head("Train","What are you training?")+'<p class="note intro">Pick the body part you want to work today. Next you will choose your exercises, then log your sets.</p>';
-  const tds=daySummary(t);if(tds)h+='<h3>Today so far</h3>'+tds;
-  if(todayParts.length)h+='<div class="tp-cont"><div><b>Today so far: '+todayParts.map(x=>x.p.label).join(" + ")+'</b><small>Pick up where you left off, or choose something else below.</small></div><button type="button" class="btn" data-trainpick="'+todayParts[0].p.key+'">Continue</button></div>';
-  if(top&&!AF().hideProgress){
-    const why=x=>x.wk+' of '+x.g+' sets this week'+(x.behind?' · '+x.behind+' behind':'')+' · last trained '+agoLong(x.last);
-    h+='<div class="tp-rec"><span class="tp-k">Recommended</span><b>'+top.p.label+(second&&second.score>=top.score-2?' <span class="tp-or">or '+second.p.label+'</span>':'')+'</b><small>'+why(top)+(top.planned?' · planned for today':'')+'</small>'+
-      '<div class="btns"><button type="button" class="btn primary" data-trainpick="'+top.p.key+'">Train '+top.p.label.toLowerCase()+'</button>'+(second&&second.score>=top.score-2?'<button type="button" class="btn" data-trainpick="'+second.p.key+'">Train '+second.p.label.toLowerCase()+'</button>':'')+'</div></div>';
+  const t=todayS(),I=idx(),tp=planOf(t),done=PARTS.filter(p=>I.byDate[t]&&I.byDate[t].parts[p.key]);
+  let h='<div class="ptitle"><h1>Train</h1></div>';
+  if(tp.length){
+    const ex=[].concat.apply([],tp.map(k=>sessionEx(partOf(k),t))).map(e=>e.n);
+    h+='<div class="eyebrow" style="margin:0 0 10px">Planned for today</div><div class="rcard"><div class="rh"><b>'+namesOf(tp)+'</b></div><p class="rs">'+(ex.length?esc(ex.join(", ")):"Your exercises are not chosen yet. You will pick them next.")+'</p><button type="button" class="btn primary" data-trainpick="'+tp[0]+'">Start today\'s workout</button></div>';
   }
-  h+='<h3>Or pick a body part</h3><div class="tp-grid">'+R.map(x=>{
-    const st=x.today?'<span class="tp-tag on">Today</span>':x.planned?'<span class="tp-tag">Planned</span>':x.behind>=Math.max(2,x.g*.3)?'<span class="tp-tag bad">Behind</span>':x.pct>=1?'<span class="tp-tag ok">Goal met</span>':'';
-    return '<button type="button" class="tp-part'+(top&&x.p.key===top.p.key?' rec':'')+'" data-trainpick="'+x.p.key+'"><span class="tp-h"><b>'+x.p.label+'</b>'+st+'</span>'+(AF().hideProgress?'':'<span class="tp-bar" aria-hidden="true"><i style="width:'+Math.min(100,Math.round(x.pct*100))+'%"></i></span><small>'+x.wk+'/'+x.g+' sets this week · '+agoLong(x.last)+'</small>')+'</button>';
-  }).join("")+'</div>'+(AF().hideProgress?'':'<p class="note">Recommendations weigh how far each part is behind its weekly set goal, how long since you last trained it, and anything you planned for today. You can add more parts once you start.</p>');
+  if(done.length)h+='<div class="rcard"><div class="rh"><b>Today so far: '+done.map(p=>p.label).join(" + ")+'</b></div><p class="rs">Pick up where you left off.</p><button type="button" class="btn" data-trainpick="'+done[0].key+'">Continue</button></div>';
+  h+='<div class="eyebrow" style="margin:18px 0 10px">'+(tp.length?"Or train something else":"Pick a body part")+'</div><div class="tp-grid">'+PARTS.map(p=>{
+    const st=tp.indexOf(p.key)>=0?'<span class="tp-tag on">Planned</span>':done.indexOf(p)>=0?'<span class="tp-tag ok">Today</span>':"";
+    return '<button type="button" class="tp-part" data-trainpick="'+p.key+'"><span class="tp-h"><b>'+p.label+'</b>'+st+'</span></button>'}).join("")+'</div>';
   return h;
 }
 function viewTrain(){
   if(!S.chosen)return trainPicker();
   if(S.lib)return libView();
   {const P0=partOf(S.part),t0=todayS();if(S.dateAuto)S.date=t0;const d0=S.date,I0=idx(),dp=dayParts(d0,P0.key);
-   const need=(dp.length>1&&!S.pickKey&&dp.some(k=>sessionEx(partOf(k),d0).length===0))||isPicking(P0,d0);
-   if(!need){if(S.dateAuto)wBegin();return logScreen(P0,d0,I0)}}
+   const withEx=dp.filter(k=>sessionEx(partOf(k),d0).length);if(withEx.length&&withEx.indexOf(P0.key)<0&&!S.pickKey){syncWheel(withEx[0]);S.part=withEx[0]}
+   const P1=partOf(S.part),need=!!S.pickKey||!withEx.length;
+   if(!need){if(S.dateAuto)wBegin();return logScreen(P1,d0,I0)}}
   return viewTrainOld();
 }
 function viewTrainOld(){
@@ -2128,7 +2126,7 @@ sheet.addEventListener("click",e=>{
   }
   if(t.hasAttribute("data-trainpick")){
     const k=a("data-trainpick");if(!validPart(k))return;
-    S.chosen=true;S.tab="log";syncWheel(k);S.open=null;S.ed=null;S.addEx=false;S.dayAdd=false;S.msg="";renderAll();focusSheet();return;
+    S.chosen=true;S.dateAuto=true;S.date=todayS();S.lib=false;S.pickKey=null;S.tab="log";wBegin();syncWheel(k);S.open=null;S.ed=null;S.addEx=false;S.dayAdd=false;S.msg="";renderAll();focusSheet();return;
   }
   if(t.hasAttribute("data-stview")){S.st=a("data-stview");renderAll();focusSheet();return}
   if(t.hasAttribute("data-stp")){S.stp=a("data-stp");renderAll();return}
