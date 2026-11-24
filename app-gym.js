@@ -1249,6 +1249,8 @@ function libList(){
     const L=exList(p.key).filter(x=>!q||x.n.toLowerCase().indexOf(q)>=0);if(!L.length)return;
     h+='<div class="eyebrow libp">'+p.label+'</div>'+L.map(ex=>{const on=sel.indexOf(ex.id)>=0;
       return '<button type="button" class="libx'+(on?" on":"")+'" data-libsel="'+ex.id+'" aria-pressed="'+on+'"><span class="lbar"></span><b>'+esc(ex.n)+'</b>'+(on?'<i>✓</i>':'')+'</button>'}).join("")});
+  const pz=[];PARTS.forEach(p=>exListAll(p.key).forEach(x=>{if(isHidden(x.id)&&(!q||x.n.toLowerCase().indexOf(q)>=0)&&(!pf||pf===p.key))pz.push(x)}));
+  if(pz.length)h+='<div class="eyebrow libp">Paused</div>'+pz.map(x=>'<div class="libx paused"><span class="lbar"></span><b>'+esc(x.n)+'</b><button type="button" class="btn sm" data-hide="'+x.id+'">Resume</button></div>').join("");
   return h||'<p class="note">No exercises match.</p>';
 }
 function libView(){
@@ -1481,6 +1483,7 @@ function exCard(ex,d,I){
     if(prev)h+='<p class="last">Last time · '+dShort(prev.date)+': '+prev.e.sets.map(s=>s.L?csx(s,ex.bw):((ex.bw&&!s.w)?s.r:fw(s.w)+"×"+s.r)).join(" · ")+'</p>';
     h+=balanceCard(ex,d,I)+'<label class="chk"><input type="checkbox" data-uni="'+ex.id+'"><span>Track left and right separately<small>For one-arm or one-leg exercises</small></span></label>';
     if(!sets.length)h+='<button type="button" class="rm" data-unpick="'+d+'|'+ex.id+'">Remove from this workout</button>';
+    h+='<button type="button" class="rm" data-hide="'+ex.id+'">Pause this exercise<small>Hides it from your lists. Your history stays and you can resume it any time in Add Exercise.</small></button>';
     if(ex.custom)h+='<button type="button" class="rm" data-rmex="'+ex.id+'">Delete this exercise from the list</button>';
     h+='</div>';
   }

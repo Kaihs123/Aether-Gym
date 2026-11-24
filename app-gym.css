@@ -620,3 +620,7 @@ html,body,button,a,label,summary,input,select,textarea,.tab{touch-action:manipul
 .app-gym .tp-tag{padding:3px 8px;border-radius:999px;background:var(--tint-soft);color:var(--tint-ink);font:600 11px var(--body)}
 .app-gym .tabs .tab{font-size:11px}
 .app-gym .tp-part{flex-direction:row!important;height:62px!important;align-items:center!important;justify-content:flex-start!important}
+.app-gym .libx.paused{opacity:.75}.app-gym .libx.paused b{color:var(--muted)}
+.app-gym .xo .rm{display:block;width:100%;text-align:left;margin-top:8px;padding:12px;border:0;border-radius:10px;background:var(--sub);color:var(--ink);font:600 15px var(--body)}
+.app-gym .xo .rm small{display:block;margin-top:3px;color:var(--muted);font:400 12.5px/1.35 var(--body)}
+.app-gym .xo .rm[data-unpick],.app-gym .xo .rm[data-rmex]{color:#ff453a}
