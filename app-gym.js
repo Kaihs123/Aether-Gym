@@ -1096,7 +1096,92 @@ function viewHome(){
     assignCard()+homeTop(I,nx,np)+
     '<div class="eyebrow" style="margin:6px 0 10px">Recent workouts</div>'+recentFeed(6);
 }
+const STP=[["7","Last 7 days"],["30","Last 30 days"],["90","Last 3 months"],["365","Last year"]];
+function aggR(from,to){
+  const I=idx(),r={w:0,sets:0,vol:0,cm:0,parts:{}};PARTS.forEach(p=>r.parts[p.key]=0);
+  I.dates.forEach(d=>{if(d<from||d>to)return;const b=I.byDate[d];r.w++;r.sets+=b.sets;r.vol+=b.vol;PARTS.forEach(p=>{if(b.parts[p.key])r.parts[p.key]+=b.parts[p.key].sets})});
+  Object.keys(CARDIO).forEach(d=>{if(d>=from&&d<=to)r.cm+=CARDIO[d].reduce((a,b)=>a+b.min,0)});
+  return r;
+}
+function periodAgg(){const n=parseInt(S.stp||"30",10),t=todayS();return {cur:aggR(addDays(t,-(n-1)),t),prev:aggR(addDays(t,-(2*n-1)),addDays(t,-n)),n:n}}
+const periodChips=()=>'<div class="chips libchips">'+STP.map(x=>'<button type="button" data-stp="'+x[0]+'" aria-pressed="'+((S.stp||"30")===x[0])+'">'+x[1]+'</button>').join("")+'</div>';
+function cmpCards(A){
+  const c=(l,a,b)=>'<div class="scard"><small>'+l+'</small><b>'+a+'</b><em>→ '+b+'</em></div>';
+  return '<div class="sgrid">'+c("Workouts",A.cur.w,A.prev.w)+c("Cardio",A.cur.cm+" min",A.prev.cm+" min")+c("Volume",vol(A.cur.vol),vol(A.prev.vol))+c("Sets",A.cur.sets,A.prev.sets)+'</div>';
+}
+function radarSvg(A){
+  const n=PARTS.length,R=105,cx=160,cy=150;let mx=1;PARTS.forEach(p=>{mx=Math.max(mx,A.cur.parts[p.key],A.prev.parts[p.key])});
+  const pt=(i,f)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [cx+Math.cos(a)*R*f,cy+Math.sin(a)*R*f]};
+  let g="";for(let k=1;k<=5;k++)g+='<polygon points="'+PARTS.map((p,i)=>pt(i,k/5).join(",")).join(" ")+'" fill="none" stroke="var(--line-2)" stroke-width="1"/>';
+  PARTS.forEach((p,i)=>{const q=pt(i,1);g+='<line x1="'+cx+'" y1="'+cy+'" x2="'+q[0]+'" y2="'+q[1]+'" stroke="var(--line)"/>'});
+  const poly=(o,st,fi)=>'<polygon points="'+PARTS.map((p,i)=>pt(i,Math.max(.03,o.parts[p.key]/mx)).join(",")).join(" ")+'" fill="'+fi+'" stroke="'+st+'" stroke-width="2" stroke-linejoin="round"/>';
+  g+=poly(A.prev,"var(--faint)","none")+poly(A.cur,"var(--tint)","var(--tint-soft)");
+  PARTS.forEach((p,i)=>{const q=pt(i,1.22);g+='<text x="'+q[0]+'" y="'+q[1]+'" text-anchor="middle" dominant-baseline="middle" fill="var(--muted)" font-size="13">'+p.label+'</text>'});
+  return '<svg class="radar" viewBox="0 0 320 300" role="img" aria-label="Muscle distribution chart">'+g+'</svg><div class="rleg"><span><i style="background:var(--tint)"></i>Current</span><span><i style="background:var(--faint)"></i>Previous</span></div>';
+}
+function bodySvg(sets){
+  let mx=1;PARTS.forEach(p=>{mx=Math.max(mx,sets[p.key]||0)});
+  const f=k=>{const v=(sets[k]||0)/mx;return v?'var(--tint)" fill-opacity="'+(.25+.7*v).toFixed(2):'var(--line-2)" fill-opacity="1'};
+  const sh=(k,d)=>'<path d="'+d+'" fill="'+f(k)+'"/>';
+  const front='<g transform="translate(0,0)"><circle cx="80" cy="26" r="16" fill="var(--line-2)"/>'+
+    sh("shoulders","M52 56c-12 2-18 10-18 22l14-2 6-18zM108 56c12 2 18 10 18 22l-14-2-6-18z")+
+    sh("chest","M56 58h22v34H58c-6-8-6-24-2-34zM82 58h22c4 10 4 26-2 34H82z")+
+    sh("core","M60 96h40v50c-10 8-30 8-40 0z")+
+    sh("arms","M32 82l14-4 4 56-12 4zM128 82l-14-4-4 56 12 4z")+
+    sh("legs","M58 150h20l-2 100-14 2zM82 150h20l-4 104-14-2z")+'</g>';
+  const back='<g transform="translate(180,0)"><circle cx="80" cy="26" r="16" fill="var(--line-2)"/>'+
+    sh("shoulders","M52 56c-12 2-18 10-18 22l14-2 6-18zM108 56c12 2 18 10 18 22l-14-2-6-18z")+
+    sh("back","M54 58h52c4 24 0 56-8 82H62c-8-26-12-58-8-82z")+
+    sh("arms","M32 82l14-4 4 56-12 4zM128 82l-14-4-4 56 12 4z")+
+    sh("core","M62 142h36v12H62z")+
+    sh("legs","M58 156h20l-2 96-14 2zM82 156h20l-4 98-14-2z")+'</g>';
+  return '<svg class="bodymap" viewBox="0 0 340 270" role="img" aria-label="Muscles worked this week">'+front+back+'<text x="80" y="266" text-anchor="middle" fill="var(--faint)" font-size="11">Front</text><text x="260" y="266" text-anchor="middle" fill="var(--faint)" font-size="11">Back</text></svg>';
+}
+function statsMenu(){
+  const it=(k,t,d)=>'<button type="button" class="smi" data-stview="'+k+'"><span><b>'+t+'</b><small>'+d+'</small></span><i>›</i></button>';
+  return '<div class="ptitle"><h1>Statistics</h1></div><div class="eyebrow" style="margin:0 0 6px">Advanced statistics</div><div class="smenu">'+
+    it("sets","Set count per muscle group","Number of sets logged for each muscle group.")+
+    it("radar","Muscle distribution (Chart)","Compare your current and previous muscle distributions.")+
+    it("body","Muscle distribution (Body)","Weekly heat map of muscles worked.")+
+    it("main","Main exercises","List of exercises you do most often.")+
+    it("month","Monthly report","Recap of your monthly workouts and statistics.")+
+    it("pbs","Personal bests and goals","Records, last trained and weekly set goals.")+'</div>';
+}
 function viewStats(){
+  const v=S.st;if(!v)return statsMenu();
+  const t=todayS(),I=idx();let h="";
+  if(v==="sets"||v==="radar"){
+    const A=periodAgg();
+    h='<div class="ptitle"><h1>'+(v==="sets"?"Set count":"Muscle distribution")+'</h1></div>'+periodChips();
+    if(v==="radar")h+=radarSvg(A)+cmpCards(A);
+    else{let mx=1;PARTS.forEach(p=>{mx=Math.max(mx,A.cur.parts[p.key],A.prev.parts[p.key])});
+      h+='<div class="rows">'+PARTS.map(p=>{const c=A.cur.parts[p.key],q=A.prev.parts[p.key];
+        return '<div class="line"><div class="h"><span>'+p.label+'</span><b>'+c+(c===1?" set":" sets")+'<em>prev '+q+'</em></b></div><div class="bar2"><i style="width:'+(c/mx*100).toFixed(1)+'%"></i></div></div>'}).join("")+'</div>'+cmpCards(A);}
+  }else if(v==="body"){
+    const a=aggR(addDays(t,-6),t);
+    h='<div class="ptitle"><h1>Muscles this week</h1></div>'+bodySvg(a.parts)+'<div class="rows">'+PARTS.map(p=>'<div class="line"><div class="h"><span>'+p.label+'</span><b>'+a.parts[p.key]+' sets</b></div></div>').join("")+'</div><p class="foot">Last 7 days. Darker means more sets.</p>';
+  }else if(v==="main"){
+    const L=Object.keys(I.by).map(id=>{const l=I.by[id];return {n:l[l.length-1].e.n,id:id,s:l.length,sets:l.reduce((a,x)=>a+x.e.sets.length,0),b:I.best[id]}}).sort((a,b)=>b.s-a.s||b.sets-a.sets).slice(0,20);
+    h='<div class="ptitle"><h1>Main exercises</h1></div>'+(L.length?'<div class="rows">'+L.map((x,i)=>'<div class="line"><div class="h"><span>'+(i+1)+'. '+esc(x.n)+'<div class="s">'+x.s+(x.s===1?" session":" sessions")+' · '+x.sets+' sets'+(x.b?' · best '+fset(x.b.set,0):'')+'</div></span></div></div>').join("")+'</div>':'<p class="note">Log a workout and your most used exercises appear here.</p>');
+  }else if(v==="month"){
+    const ym=S.stm||t.slice(0,7),y=+ym.slice(0,4),mo=+ym.slice(5,7),first=ym+"-01",days=[];
+    for(let d=first;d.slice(0,7)===ym;d=addDays(d,1))days.push(d);
+    const last=days[days.length-1],a=aggR(first,last),pm=mo===1?(y-1)+"-12":y+"-"+pad(mo-1),nm=mo===12?(y+1)+"-01":y+"-"+pad(mo+1);
+    let st=0;days.forEach(d=>{st+=stepsOf(d)||0});
+    const act=days.filter(d=>I.byDate[d]||CARDIO[d]).length;
+    const ex={};days.forEach(d=>{const b=I.byDate[d];if(b)Object.keys(b.parts).forEach(k=>b.parts[k].ex.forEach(e=>{ex[e.n]=(ex[e.n]||0)+e.sets.length}))});
+    const top=Object.keys(ex).sort((p,q)=>ex[q]-ex[p]).slice(0,5),pbs=I.pbs.filter(p=>p.date>=first&&p.date<=last);
+    const lbl=new Date(y,mo-1,1).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+    h='<div class="ptitle"><h1>Monthly report</h1></div><div class="datebar"><button type="button" data-stm="'+pm+'" aria-label="Previous month">‹</button><div><b>'+lbl+'</b></div><button type="button" data-stm="'+nm+'" aria-label="Next month"'+(nm>t.slice(0,7)?" disabled":"")+'>›</button></div>'+
+      '<div class="sgrid"><div class="scard"><small>Workouts</small><b>'+a.w+'</b></div><div class="scard"><small>Active days</small><b>'+act+'</b></div><div class="scard"><small>Volume</small><b>'+vol(a.vol)+'</b></div><div class="scard"><small>Sets</small><b>'+a.sets+'</b></div><div class="scard"><small>Cardio</small><b>'+a.cm+' min</b></div><div class="scard"><small>Steps</small><b>'+nfmt(st)+'</b></div></div>'+
+      '<div class="mgrid">'+days.map(d=>'<span class="'+(I.byDate[d]?"on":(CARDIO[d]?"cd":""))+'" title="'+d+'">'+(+d.slice(8))+'</span>').join("")+'</div>'+
+      '<div class="eyebrow" style="margin:18px 0 8px">Top exercises</div>'+(top.length?'<div class="rows">'+top.map(n=>'<div class="line"><div class="h"><span>'+esc(n)+'</span><b>'+ex[n]+' sets</b></div></div>').join("")+'</div>':'<p class="note" style="margin-top:0">No weight workouts this month.</p>')+
+      (pbs.length?'<div class="eyebrow" style="margin:18px 0 8px">Personal bests</div><div class="rows">'+pbs.slice(0,8).map(e=>'<div class="line"><div class="h"><span>'+esc(e.n)+'<div class="s">'+dShort(e.date)+'</div></span><b>'+fset(e.set,e.bw)+'</b></div></div>').join("")+'</div>':'');
+  }else{h=statsPB()}
+  return h;
+}
+
+function statsPB(){
   const I=idx(),nx=nextUp(),hp=!!AF().hideProgress;
   const rows=PARTS.map(p=>{
     const st=I.part[p.key],share=I.tot30?st.sets30/I.tot30*100:0;
@@ -1104,7 +1189,7 @@ function viewStats(){
       '<div class="bar2"><i style="width:'+share.toFixed(1)+'%"></i></div><div class="s">Last trained '+agoLong(st.last)+'</div></div>';
   }).join("");
   const recent=I.pbs.slice(0,8).map(e=>'<div class="line"><div class="h"><span>'+esc(e.n)+'<div class="s">'+dShort(e.date)+'</div></span><b>'+fset(e.set,e.bw)+'</b></div></div>').join("");
-  return '<div class="ptitle"><h1>Statistics</h1></div>'+
+  return '<div class="ptitle"><h1>Personal bests</h1></div>'+
     (hp?'':'<div class="eyebrow" style="margin:0 0 10px">Last 30 days</div><div class="rows">'+rows+'</div><div class="eyebrow" style="margin:20px 0 10px">Weekly set goals</div>'+goalsBlock(I))+
     '<div class="eyebrow" style="margin:20px 0 10px">Personal bests</div>'+(recent?'<div class="rows">'+recent+'</div>':'<p class="note" style="margin-top:0">No personal bests yet. Beat the top set of an earlier session and it shows up here.</p>')+
     (hp?'':'<p class="foot">Share is each body part\'s portion of your sets over the last 30 days. Volume is weight × reps.</p>');
@@ -1145,6 +1230,7 @@ function viewProfile(){
     '<button type="button" class="dtile wide" data-navgo="settings">Settings and account</button>';
 }
 function backBar(){
+  if(S.page==="stats"&&S.st)return '<button type="button" class="backbar" data-navgo="stats">'+CHEVL+'Statistics</button>';
   const to={stats:"profile",photos:"profile",settings:"profile",cardio:"workout"}[S.page];
   if(!to)return "";
   return '<button type="button" class="backbar" data-navgo="'+to+'">'+CHEVL+(to==="profile"?"Profile":"Workout")+'</button>';
@@ -2044,7 +2130,10 @@ sheet.addEventListener("click",e=>{
     const k=a("data-trainpick");if(!validPart(k))return;
     S.chosen=true;S.tab="log";syncWheel(k);S.open=null;S.ed=null;S.addEx=false;S.dayAdd=false;S.msg="";renderAll();focusSheet();return;
   }
-  if(t.hasAttribute("data-navgo")){const p=a("data-navgo");S.page=p;S.msg="";S.ed=null;if(p==="train"){S.chosen=false;S.dayAdd=false}renderAll();focusSheet();return}
+  if(t.hasAttribute("data-stview")){S.st=a("data-stview");renderAll();focusSheet();return}
+  if(t.hasAttribute("data-stp")){S.stp=a("data-stp");renderAll();return}
+  if(t.hasAttribute("data-stm")){S.stm=a("data-stm");renderAll();return}
+  if(t.hasAttribute("data-navgo")){const p=a("data-navgo");S.page=p;if(p==="stats")S.st=null;S.msg="";S.ed=null;if(p==="train"){S.chosen=false;S.dayAdd=false}renderAll();focusSheet();return}
   if(t.hasAttribute("data-wresume")){S.page="train";renderAll();focusSheet();return}
   if(t.hasAttribute("data-wstart")){const d=todayS();S.page="train";S.chosen=true;S.dateAuto=true;S.date=d;S.tab="log";S.lib=true;S.libSel=[];S.libQ="";S.libPart="";S.pickKey=null;S.open=null;S.ed=null;S.msg="";wEnd();wBegin();renderAll();focusSheet();return}
   if(t.hasAttribute("data-rstart")){
