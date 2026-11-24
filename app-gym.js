@@ -767,15 +767,10 @@ function adminCard(){
 const adEmail=()=>((S.ad&&S.ad.email)||"").trim().toLowerCase();
 
 const softKeep=()=>renderAll();
-function viewCardio(){
-  const t=todayS();
+function cardioForm(isT,cdt){
   if(!S.cm||!MACH.some(m=>m[0]===S.cm))S.cm="tread";
   if(!S.cf||S.cfm!==S.cm){S.cf=cardioPrefill(S.cm);S.cfm=S.cm}
-  const cdt=cardDate(),isT=cdt===t,m=machOf(S.cm),wk=cardioWeek(),today=CARDIO[cdt]||[];
-  let h='<div class="ptitle"><h1>Cardio</h1></div>';
-  h+='<div class="sgrid three"><div class="scard"><small>This week</small><b>'+wk.mins+' min</b></div><div class="scard"><small>Days</small><b>'+wk.days+'</b></div><div class="scard"><small>Distance</small><b>'+wk.dist+' '+distU()+'</b></div></div>';
-  h+='<div class="datebar"><button type="button" data-sdate="-1" aria-label="Previous day">‹</button><div><b>'+(isT?"Today":dShort(cdt))+'</b><small>'+(isT?dShort(cdt):agoLong(cdt)+" · adding to this day")+'</small></div><button type="button" data-sdate="1" aria-label="Next day"'+(isT?" disabled":"")+'>›</button></div>';
-  h+=stepsCard();
+  const m=machOf(S.cm);let h="";
   h+='<h3>Machine</h3><div class="cmach" role="group" aria-label="Cardio machine">'+MACH.map(x=>'<button type="button" data-cmach="'+x[0]+'" aria-pressed="'+(x[0]===S.cm)+'">'+x[1]+'</button>').join("")+'</div>';
   h+='<div class="addcard cform"><b class="ctitle">'+m[1]+'</b><small class="note">'+m[3]+'</small>';
   m[2].forEach(k=>{
@@ -786,6 +781,18 @@ function viewCardio(){
   const l=cardioLast(S.cm);
   h+='<div class="btns"><button type="button" class="btn primary" data-cadd>Add cardio'+(isT?"":" to "+dShort(cdt))+'</button></div>'+(l?'<small class="note">Numbers start from your last '+m[1].toLowerCase()+' session. Change what is different.</small>':"")+
     '<p class="msg'+(S.msgErr?" err":"")+'" role="status">'+(S.msgFor==="__cardio"?esc(S.msg):"")+'</p></div>';
+  return h;
+}
+function viewCardio(){
+  const t=todayS();
+  if(!S.cm||!MACH.some(m=>m[0]===S.cm))S.cm="tread";
+  if(!S.cf||S.cfm!==S.cm){S.cf=cardioPrefill(S.cm);S.cfm=S.cm}
+  const cdt=cardDate(),isT=cdt===t,m=machOf(S.cm),wk=cardioWeek(),today=CARDIO[cdt]||[];
+  let h='<div class="ptitle"><h1>Cardio</h1></div>';
+  h+='<div class="sgrid three"><div class="scard"><small>This week</small><b>'+wk.mins+' min</b></div><div class="scard"><small>Days</small><b>'+wk.days+'</b></div><div class="scard"><small>Distance</small><b>'+wk.dist+' '+distU()+'</b></div></div>';
+  h+='<div class="datebar"><button type="button" data-sdate="-1" aria-label="Previous day">‹</button><div><b>'+(isT?"Today":dShort(cdt))+'</b><small>'+(isT?dShort(cdt):agoLong(cdt)+" · adding to this day")+'</small></div><button type="button" data-sdate="1" aria-label="Next day"'+(isT?" disabled":"")+'>›</button></div>';
+  h+=stepsCard();
+  h+=cardioForm(isT,cdt);
   const ds=daySummary(cdt);if(ds)h+='<h3>'+(isT?"Today so far":dShort(cdt))+'</h3>'+ds;
   h+='<h3>'+(isT?"Cardio today":"Cardio on "+dShort(cdt))+'</h3>';
   h+=today.length?'<div class="clist">'+today.map(b=>'<div class="crow"><span><b>'+machOf(b.m)[1]+'</b><small>'+fmtCardio(b)+'</small></span><button type="button" class="btn sm" data-cdel="'+cdt+'|'+b.id+'" aria-label="Delete this cardio entry">Delete</button></div>').join("")+'</div>':'<p class="note">Nothing logged '+(isT?"today":"on this day")+' yet.</p>';
@@ -1237,7 +1244,7 @@ function backBar(){
   return '<button type="button" class="backbar" data-navgo="'+to+'">'+CHEVL+(to==="profile"?"Profile":"Workout")+'</button>';
 }
 function libList(){
-  const q=(S.libQ||"").toLowerCase().trim(),sel=S.libSel||[],pf=S.libPart||"";let h="";
+  const q=(S.libQ||"").toLowerCase().trim(),sel=S.libSel||[],pf=S.libPart=="cardio"?"":(S.libPart||"");let h="";
   PARTS.forEach(p=>{if(pf&&pf!==p.key)return;
     const L=exList(p.key).filter(x=>!q||x.n.toLowerCase().indexOf(q)>=0);if(!L.length)return;
     h+='<div class="eyebrow libp">'+p.label+'</div>'+L.map(ex=>{const on=sel.indexOf(ex.id)>=0;
@@ -1248,9 +1255,9 @@ function libView(){
   const sel=S.libSel||[];
   return '<div class="logbar"><button type="button" class="lb-min" data-libclose aria-label="Back">'+CHEVL+'</button><b>Add Exercise</b></div>'+
     '<input type="search" class="libq" data-libq placeholder="Search exercises" autocomplete="off" value="'+esc(S.libQ||"")+'">'+
-    '<div class="chips libchips"><button type="button" data-libpart="" aria-pressed="'+!S.libPart+'">All</button>'+PARTS.map(p=>'<button type="button" data-libpart="'+p.key+'" aria-pressed="'+(S.libPart===p.key)+'">'+p.label+'</button>').join("")+'</div>'+
-    '<div id="liblist">'+libList()+'</div>'+
-    '<div class="pickbar"><button type="button" class="btn primary" data-libadd'+(sel.length?"":" disabled")+'>'+(sel.length?"Add "+sel.length+(sel.length===1?" exercise":" exercises"):"Select exercises")+'</button></div>';
+    '<div class="chips libchips"><button type="button" data-libpart="" aria-pressed="'+!S.libPart+'">All</button>'+PARTS.map(p=>'<button type="button" data-libpart="'+p.key+'" aria-pressed="'+(S.libPart===p.key)+'">'+p.label+'</button>').join("")+'<button type="button" data-libpart="cardio" aria-pressed="'+(S.libPart==="cardio")+'">Cardio</button></div>'+
+    (S.libPart==="cardio"?'<p class="note">Cardio is saved on the same day as your exercises.</p>'+cardioForm(true,cardDate()):'<div id="liblist">'+libList()+'</div>')+
+    (S.libPart==="cardio"?'':'<div class="pickbar"><button type="button" class="btn primary" data-libadd'+(sel.length?"":" disabled")+'>'+(sel.length?"Add "+sel.length+(sel.length===1?" exercise":" exercises"):"Select exercises")+'</button></div>');
 }
 function logScreen(P,d,I){
   const isToday=d===todayS(),bd=I.byDate[d],dps=dayParts(d,P.key),anySets=!!(SESS[d]&&Object.keys(SESS[d].ex).length);
@@ -1260,7 +1267,8 @@ function logScreen(P,d,I){
   if(S.undo&&S.undo.d===d)h+='<div class="unpicked" role="status"><span>Removed <b>'+esc(S.undo.n)+'</b> from this session</span><button type="button" data-undopick>Undo</button></div>';
   const list=[].concat.apply([],dps.map(k=>sessionEx(partOf(k),d)));
   h+=list.map(ex=>exCard(ex,d,I)).join("");
-  dps.filter(k=>!sessionEx(partOf(k),d).length).forEach(k=>{h+='<button type="button" class="addset big" data-pickopen="'+k+'">+ Choose '+partOf(k).label.toLowerCase()+' exercises</button>'});
+  (CARDIO[d]||[]).forEach(b=>{h+='<div class="xc cx"><div class="xh"><span class="xi">♥</span><b>'+machOf(b.m)[1]+'</b><button type="button" class="xm" data-cdel="'+d+'|'+b.id+'" aria-label="Delete this cardio entry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div><p class="rs">'+fmtCardio(b)+'</p></div>'});
+  dps.filter(k=>!sessionEx(partOf(k),d).length&&list.length).forEach(k=>{h+='<button type="button" class="addset big" data-pickopen="'+k+'">+ Choose '+partOf(k).label.toLowerCase()+' exercises</button>'});
   if(S.addEx)h+=newExForm();
   h+='<button type="button" class="addset big" data-libopen>+ Add Exercise</button>'+(S.addEx?'':'<button type="button" class="addset" data-addex="open">+ New custom exercise</button>');
   if(!anySets)h+='<button type="button" class="cancelw" data-trainexit="discard">Cancel Workout</button>';
@@ -1308,7 +1316,7 @@ function viewTrain(){
   if(S.lib)return libView();
   {const P0=partOf(S.part),t0=todayS();if(S.dateAuto)S.date=t0;const d0=S.date,I0=idx(),dp=dayParts(d0,P0.key);
    const withEx=dp.filter(k=>sessionEx(partOf(k),d0).length);if(withEx.length&&withEx.indexOf(P0.key)<0&&!S.pickKey){syncWheel(withEx[0]);S.part=withEx[0]}
-   const P1=partOf(S.part),need=!!S.pickKey||!withEx.length;
+   const P1=partOf(S.part),need=!!S.pickKey||(!withEx.length&&!(CARDIO[d0]||[]).length);
    if(!need){if(S.dateAuto)wBegin();return logScreen(P1,d0,I0)}}
   return viewTrainOld();
 }
@@ -2133,13 +2141,13 @@ sheet.addEventListener("click",e=>{
   if(t.hasAttribute("data-stm")){S.stm=a("data-stm");renderAll();return}
   if(t.hasAttribute("data-navgo")){const p=a("data-navgo");S.page=p;if(p==="stats")S.st=null;S.msg="";S.ed=null;if(p==="train"){S.chosen=false;S.dayAdd=false}renderAll();focusSheet();return}
   if(t.hasAttribute("data-wresume")){S.page="train";renderAll();focusSheet();return}
-  if(t.hasAttribute("data-wstart")){const d=todayS();S.page="train";S.chosen=true;S.dateAuto=true;S.date=d;S.tab="log";S.lib=true;S.libSel=[];S.libQ="";S.libPart="";S.pickKey=null;S.open=null;S.ed=null;S.msg="";wEnd();wBegin();renderAll();focusSheet();return}
+  if(t.hasAttribute("data-wstart")){const d=todayS();S.cd=null;S.page="train";S.chosen=true;S.dateAuto=true;S.date=d;S.tab="log";S.lib=true;S.libSel=[];S.libQ="";S.libPart="";S.pickKey=null;S.open=null;S.ed=null;S.msg="";wEnd();wBegin();renderAll();focusSheet();return}
   if(t.hasAttribute("data-rstart")){
     const x=ASSIGN.plan&&ASSIGN.plan.sessions[parseInt(a("data-rstart"),10)];if(!x||!x.parts.length)return;
     const d=todayS(),cur=PLAN.day[d]||[];PLAN.day[d]=PARTS.map(q=>q.key).filter(k=>x.parts.indexOf(k)>=0||cur.indexOf(k)>=0);touch("plan","plan");
     syncWheel(x.parts[0]);S.page="train";S.chosen=true;S.dateAuto=true;S.date=d;S.tab="log";S.lib=false;S.pickKey=null;S.open=null;S.ed=null;S.msg="";wBegin();renderAll();focusSheet();return}
-  if(t.hasAttribute("data-libopen")){S.lib=true;S.libSel=[];S.libQ="";S.libPart="";renderAll();focusSheet();return}
-  if(t.hasAttribute("data-libclose")){const d=todayS(),has=dayParts(d,S.part).some(k=>sessionEx(partOf(k),d).length);S.lib=false;if(!has){S.chosen=false;S.page="workout";wEnd()}renderAll();focusSheet();return}
+  if(t.hasAttribute("data-libopen")){S.cd=S.dateAuto?null:S.date;S.lib=true;S.libSel=[];S.libQ="";S.libPart="";renderAll();focusSheet();return}
+  if(t.hasAttribute("data-libclose")){const d=todayS(),has=dayParts(d,S.part).some(k=>sessionEx(partOf(k),d).length)||(CARDIO[d]||[]).length>0;S.lib=false;if(!has){S.chosen=false;S.page="workout";wEnd()}renderAll();focusSheet();return}
   if(t.hasAttribute("data-libpart")){S.libPart=a("data-libpart");renderAll();return}
   if(t.hasAttribute("data-libsel")){const id=a("data-libsel"),L=S.libSel||(S.libSel=[]),i=L.indexOf(id);if(i>=0)L.splice(i,1);else L.push(id);renderAll();return}
   if(t.hasAttribute("data-libadd")){
@@ -2235,7 +2243,9 @@ sheet.addEventListener("click",e=>{
     if(!(o.min>0)){say("__cardio","Enter how many minutes you did.",true);renderAll();return}
     const d=cardDate();
     CARDIO[d]=(CARDIO[d]||[]).concat(cleanCardio([o]));
-    touch("cardio",d);S.cf=null;say("__cardio","Added "+m[1].toLowerCase()+".",false);renderAll();return;
+    touch("cardio",d);S.cf=null;say("__cardio","Added "+m[1].toLowerCase()+".",false);
+    if(S.lib){S.lib=false;S.chosen=true;S.page="train";S.libPart="";S.dateAuto=d===todayS();S.date=d;wBegin()}
+    renderAll();return;
   }
   if(t.hasAttribute("data-cdel")){
     const v=a("data-cdel").split("|"),d=v[0],id=v[1],arr=CARDIO[d];if(!arr)return;
